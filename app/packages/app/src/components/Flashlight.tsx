@@ -210,7 +210,7 @@ const useThumbnailClick = (
         );
       };
 
-      if (!selected.size) {
+      if (!selected.size || event.ctrlKey) {
         openModal();
         return;
       }

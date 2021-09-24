@@ -58,7 +58,7 @@ export const LABELS = {
 export const MASK_LABELS = new Set([DETECTION, SEGMENTATION]);
 
 export const SELECTION_TEXT =
-  "Click to select sample, Shift+Click to select a range";
+  "Click to select sample, Shift+Click to select a range, Ctrl+Click to expand";
 
 export const JSON_COLORS = {
   keyColor: "rgb(138, 138, 138)",
