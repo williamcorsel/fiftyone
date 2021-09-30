@@ -15,9 +15,12 @@ import {
   zoomOut,
   cropToContent,
   json,
+  toggleSource,
 } from "./actions";
 import cropIcon from "../../icons/crop.svg";
 import jsonIcon from "../../icons/json.svg";
+import lockIcon from "../../icons/lock.svg";
+import lockOpenIcon from "../../icons/lockOpen.svg";
 
 import {
   lookerArrow,
@@ -427,6 +430,47 @@ export class JSONButtonElement<State extends BaseState> extends BaseElement<
         ? this.element.classList.add(lookerControlActive)
         : this.element.classList.remove(lookerControlActive);
       this.active = showJSON;
+    }
+
+    return this.element;
+  }
+}
+
+export class ToggleSourceButtonElement<
+  State extends BaseState
+> extends BaseElement<State, HTMLImageElement> {
+  private active: boolean;
+
+  isShown(config: Readonly<State["config"]>) {
+    return Boolean(config.hasSource);
+  }
+
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        toggleSource.action(update, dispatchEvent);
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.style.padding = "2px";
+    element.title = `${toggleSource.title} (${toggleSource.shortcut})`;
+    element.style.gridArea = "2 / 8 / 2 / 8";
+    element.style.cursor = "pointer";
+    return element;
+  }
+
+  renderSelf({ options: { showSource } }) {
+    if (this.active !== showSource) {
+      showSource
+        ? this.element.classList.add(lookerControlActive)
+        : this.element.classList.remove(lookerControlActive);
+      this.element.src = !showSource ? lockIcon : lockOpenIcon;
+      this.active = showSource;
     }
 
     return this.element;

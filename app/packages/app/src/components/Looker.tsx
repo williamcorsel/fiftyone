@@ -394,9 +394,11 @@ const Looker = ({
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
   const options = useRecoilValue(lookerOptions);
   const activePaths = useRecoilValue(labelAtoms.activeModalFields);
+  const hasSource = useRecoilValue(selectors.hasSource);
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);
   const initialRef = useRef<boolean>(true);
+  console.log(hasSource);
 
   const [looker] = useState(() => {
     const constructor = getLookerConstructor(mimetype);
@@ -406,6 +408,7 @@ const Looker = ({
       sample,
       {
         src: sampleSrc,
+        hasSource,
         dimensions,
         frameRate,
         frameNumber,

@@ -240,6 +240,11 @@ export const view = selector<[]>({
   },
 });
 
+export const hasSource = selector({
+  key: "hasSource",
+  get: ({ get }) => Boolean(!get(isRootView)),
+});
+
 export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {

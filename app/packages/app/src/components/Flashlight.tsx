@@ -290,6 +290,7 @@ export default React.memo(() => {
       sample,
       {
         src: getSampleSrc(sample.filepath, sample._id),
+        hasSource: false,
         thumbnail: true,
         dimensions,
         sampleId: sample._id,

@@ -22,6 +22,11 @@ export const modal = atom<ModalSample | null>({
   default: null,
 });
 
+export const modalSourceSample = atom<boolean>({
+  key: "modalSourceSample",
+  default: false,
+});
+
 export interface SortResults {
   count: boolean;
   asc: boolean;

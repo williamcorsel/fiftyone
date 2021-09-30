@@ -12,7 +12,6 @@ import { useMessageHandler, useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
-import { samples } from "./Flashlight";
 
 const Container = styled.div`
   position: relative;

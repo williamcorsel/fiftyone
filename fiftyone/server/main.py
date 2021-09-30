@@ -30,7 +30,6 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
-import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
@@ -43,7 +42,11 @@ import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
-from fiftyone.server.extended_view import get_extended_view, get_view_field
+from fiftyone.server.extended_view import (
+    get_extended_view,
+    get_view_field,
+    page_view,
+)
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.utils as fosu
 
@@ -217,6 +220,35 @@ class FramesHandler(tornado.web.RequestHandler):
         self.write({"frames": frames, "range": [start_frame, end_frame]})
 
 
+class SampleHandler(tornado.web.RequestHandler):
+    """Source sample requests"""
+
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.set_header("x-colab-notebook-cache-control", "no-cache")
+
+    async def get(self):
+        # pylint: disable=no-value-for-parameter
+        sample_id = self.get_argument("sampleId", None)
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset
+
+        view = fov.make_optimized_select_view(view, sample_id)
+        view = page_view(view)
+
+        [sample] = await foo.aggregate(
+            StateHandler.sample_collection(),
+            view._pipeline(attach_frames=True, detach_frames=False),
+        ).to_list(1)
+        convert(sample)
+        self.write({"sample": sample})
+
+
 class PageHandler(tornado.web.RequestHandler):
     """Page requests
 
@@ -245,14 +277,7 @@ class PageHandler(tornado.web.RequestHandler):
             self.write({"results": [], "more": False})
             return
 
-        if view.media_type == fom.VIDEO:
-            if isinstance(view, focl.ClipsView):
-                expr = F("frame_number") == F("$support")[0]
-            else:
-                expr = F("frame_number") == 1
-
-            view = view.set_field("frames", F("frames").filter(expr))
-
+        view = page_view(view)
         view = get_extended_view(view, state.filters, count_labels_tags=True)
         view = view.skip((page - 1) * page_length)
 
@@ -1455,6 +1480,7 @@ class Application(tornado.web.Application):
             (r"/page", PageHandler),
             (r"/polling", PollingHandler),
             (r"/reactivate", ReactivateHandler),
+            (r"/sample", SampleHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
             (r"/teams", TeamsHandler),

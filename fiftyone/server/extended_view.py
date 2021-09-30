@@ -5,6 +5,7 @@ FiftyOne extended view.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -358,3 +359,23 @@ def _count_list_items(path, view):
     return view.set_field(
         path, F(path)._function(function), _allow_missing=True
     )
+
+
+def page_view(view):
+    """Adjust a view for page related requests (sample only)
+    
+    Args:
+        view: a :class:`fiftyone.core.collections.SampleCollection`
+
+    Returns:
+        an adjusted :class:`fiftyone.core.collections.SampleCollection`
+    """
+    if view.media_type == fom.VIDEO:
+        if isinstance(view, focl.ClipsView):
+            expr = F("frame_number") == F("$support")[0]
+        else:
+            expr = F("frame_number") == 1
+
+        view = view.set_field("frames", F("frames").filter(expr))
+
+    return view

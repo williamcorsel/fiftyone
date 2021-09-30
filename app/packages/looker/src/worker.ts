@@ -4,7 +4,16 @@
 
 import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
 import { deserialize } from "./numpy";
-import { FrameChunk } from "./state";
+import { FrameChunk, FrameSample, Sample } from "./state";
+
+/** GLOBALS */
+
+const HIGH_WATER_MARK = 6;
+
+let stream: FrameStream | null = null;
+let streamId: string | null = null;
+
+/** END GLOBALS */
 
 const DESERIALIZE = {
   Detection: (label, buffers) => {
@@ -35,7 +44,7 @@ const mapId = (obj) => {
   return obj;
 };
 
-const processLabels = (sample: { [key: string]: any }): ArrayBuffer[] => {
+const handleLabels = (sample: { [key: string]: any }): ArrayBuffer[] => {
   let buffers: ArrayBuffer[] = [];
   for (const field in sample) {
     const label = sample[field];
@@ -61,43 +70,39 @@ const processLabels = (sample: { [key: string]: any }): ArrayBuffer[] => {
   return buffers;
 };
 
-/** GLOBALS */
+const handleSample = (
+  sample: Sample & { frames?: [FrameSample] }
+): ArrayBuffer[] => {
+  let buffers = handleLabels(sample);
 
-const HIGH_WATER_MARK = 6;
+  if (sample.frames && sample.frames.length) {
+    buffers = [
+      ...buffers,
+      ...sample.frames
+        .map<ArrayBuffer[]>((frame) => handleLabels(frame))
+        .flat(),
+    ];
+  }
 
-let stream: FrameStream | null = null;
-let streamId: string | null = null;
+  mapId(sample);
 
-/** END GLOBALS */
+  return buffers;
+};
 
 interface ReaderMethod {
   method: string;
 }
 
 interface ProcessSample {
-  origin: string;
   uuid: string;
-  sample: {
-    [key: string]: object;
-    frames: any[];
-  };
+  sample: Sample & { frames: [FrameSample] };
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
 const processSample = ({ sample, uuid }: ProcessSample) => {
-  let buffers = processLabels(sample);
+  const buffers = handleSample(sample);
 
-  if (sample.frames && sample.frames.length) {
-    buffers = [
-      ...buffers,
-      ...sample.frames
-        .map<ArrayBuffer[]>((frame) => processLabels(frame))
-        .flat(),
-    ];
-  }
-
-  mapId(sample);
   postMessage(
     {
       method: "processSample",
@@ -127,7 +132,6 @@ const createReader = ({
   chunkSize: number;
   frameCount: number;
   frameNumber: number;
-  origin: string;
   sampleId: string;
   url: string;
 }): FrameStream => {
@@ -187,7 +191,7 @@ const getSendChunk = (uuid: string) => ({
     let buffers: ArrayBuffer[] = [];
 
     value.frames.forEach((frame) => {
-      buffers = [...buffers, ...processLabels(frame)];
+      buffers = [...buffers, ...handleLabels(frame)];
     });
     postMessage(
       {
@@ -206,6 +210,8 @@ interface RequestFrameChunk {
   uuid: string;
 }
 
+type RequestFrameChunkMethod = ReaderMethod & RequestFrameChunk;
+
 const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
   if (uuid === streamId) {
     stream && stream.reader.read().then(getSendChunk(uuid));
@@ -218,7 +224,6 @@ interface SetStream {
   frameCount: number;
   uuid: string;
   url: string;
-  origin: string;
 }
 
 type SetStreamMethod = ReaderMethod & SetStream;
@@ -240,13 +245,41 @@ const setStream = ({
     frameNumber: frameNumber,
     sampleId,
     url,
-    origin,
   });
 
   stream.reader.read().then(getSendChunk(uuid));
 };
 
-type Method = SetStreamMethod | ProcessSampleMethod;
+interface RequestSourceSample {
+  sampleId: string;
+  url: string;
+  uuid: string;
+}
+
+const requestSourceSample = ({ sampleId, url, uuid }: RequestSourceSample) => {
+  fetch(
+    `${url}/sample?` +
+      new URLSearchParams({
+        sampleId,
+      })
+  )
+    .then((response: Response) => response.json())
+    .then(({ sample }: { sample: Sample }) => {
+      const buffers = handleSample(sample);
+
+      postMessage(
+        {
+          method: "sourceSample",
+          sample,
+          uuid,
+        },
+        // @ts-ignore
+        buffers
+      );
+    });
+};
+
+type Method = SetStreamMethod | ProcessSampleMethod | RequestFrameChunkMethod;
 
 onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
   switch (method) {
@@ -258,6 +291,9 @@ onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
       return;
     case "setStream":
       setStream(args as SetStream);
+      return;
+    case "requestSourceSample":
+      requestSourceSample(args as RequestSourceSample);
       return;
     default:
       throw new Error("unknown method");

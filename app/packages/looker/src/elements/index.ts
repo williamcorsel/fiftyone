@@ -52,6 +52,7 @@ export const getFrameElements: GetElements<FrameState> = (
         node: common.ControlsElement,
         children: [
           { node: frame.FrameNumberElement },
+          { node: common.ToggleSourceButtonElement },
           { node: common.PlusElement },
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
@@ -119,6 +120,7 @@ export const getImageElements: GetElements<ImageState> = (
         node: common.ControlsElement,
         children: [
           { node: frame.FrameNumberElement },
+          { node: common.ToggleSourceButtonElement },
           { node: common.PlusElement },
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
@@ -194,7 +196,7 @@ export const getVideoElements: GetElements<VideoState> = (
           { node: video.TimeElement },
           video.PLAYBACK_RATE,
           video.VOLUME,
-          { node: video.SupportLockButtonElement },
+          { node: common.ToggleSourceButtonElement },
           { node: common.PlusElement },
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },

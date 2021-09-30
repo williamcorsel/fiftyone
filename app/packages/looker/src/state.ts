@@ -72,6 +72,7 @@ interface BaseOptions {
   fieldsMap?: { [key: string]: string };
   inSelectionMode: boolean;
   mimetype: string;
+  showSource: boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -98,6 +99,7 @@ interface BaseConfig {
   dimensions: Dimensions;
   sampleId: string;
   fieldSchema: Schema;
+  hasSource: boolean;
 }
 
 export interface FrameConfig extends BaseConfig {
@@ -210,7 +212,6 @@ export interface VideoState extends BaseState {
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
   hasPoster: boolean;
   waitingForVideo: boolean;
-  lockedToSupport: boolean;
 }
 
 export type Optional<T> = {
@@ -248,6 +249,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   fieldsMap: {},
   inSelectionMode: false,
   mimetype: "",
+  showSource: false,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

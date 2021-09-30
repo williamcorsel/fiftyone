@@ -84,6 +84,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
   protected sample: Sample;
+  protected sourceSample?: Sample;
   protected state: State;
   protected readonly updater: StateUpdate<State>;
 
@@ -144,8 +145,36 @@ export abstract class Looker<State extends BaseState = BaseState> {
         return;
       }
 
+      if (eventType === "options" && detail.showSource) {
+        !this.sourceSample && this.requestSourceSample();
+      }
+
       this.dispatchEvent(eventType, detail);
     };
+  }
+
+  private requestSourceSample() {
+    const messageUUID = uuid();
+    const listener = ({ data: { sample, uuid } }) => {
+      if (uuid === messageUUID) {
+        this.sourceSample = sample;
+        this.loadOverlays(sample);
+        this.updater({ overlaysPrepared: true });
+        labelsWorker.removeEventListener("message", listener);
+      }
+    };
+    labelsWorker.addEventListener("message", listener);
+    labelsWorker.postMessage({
+      method: "processSample",
+      sample,
+      uuid: messageUUID,
+    });
+
+    labelsWorker.postMessage({
+      method: "requestSourceSample",
+      sample,
+      uuid: messageUUID,
+    });
   }
 
   private makeUpdate(): StateUpdate<State> {
@@ -478,7 +507,6 @@ export abstract class Looker<State extends BaseState = BaseState> {
     labelsWorker.addEventListener("message", listener);
     labelsWorker.postMessage({
       method: "processSample",
-      origin: window.location.origin,
       sample,
       uuid: messageUUID,
     });
@@ -632,7 +660,7 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   loadOverlays(sample: Sample) {
-    this.overlays = loadOverlays(sample);
+    return loadOverlays(sample);
   }
 
   pluckOverlays() {
@@ -791,7 +819,6 @@ const { aquireReader, addFrame } = (() => {
       frameCount,
       frameNumber,
       uuid: subscription,
-      origin: window.location.origin,
       url: getURL(),
     });
     return subscription;
@@ -956,7 +983,6 @@ export class VideoLooker extends Looker<VideoState> {
       SHORTCUTS: VIDEO_SHORTCUTS,
       hasPoster: false,
       waitingForVideo: false,
-      lockedToSupport: Boolean(config.support),
     };
   }
 
@@ -1009,7 +1035,7 @@ export class VideoLooker extends Looker<VideoState> {
     const frameNumber = state.frameNumber;
     let hideSampleOverlays = false;
 
-    if (state.config.support && !state.lockedToSupport) {
+    if (state.config.support && !state.options.showSource) {
       const [start, end] = state.config.support;
       hideSampleOverlays = frameNumber < start || frameNumber > end;
     }
