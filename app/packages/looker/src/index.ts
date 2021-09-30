@@ -16,7 +16,6 @@ import {
   DASH_LENGTH,
   LABEL_LISTS,
   JSON_COLORS,
-  LABELS,
   MASK_LABELS,
 } from "./constants";
 import {
@@ -58,6 +57,7 @@ import {
   getDPR,
   getElementBBox,
   getFitRect,
+  getMimeType,
   getURL,
   mergeUpdates,
   removeFromBuffers,
@@ -69,13 +69,11 @@ import { zoomToContent } from "./zoom";
 import { getFrameNumber } from "./elements/util";
 
 export { zoomAspectRatio } from "./zoom";
+export { freeVideos } from "./elements/util";
 
 const labelsWorker = createWorker();
 
-export abstract class Looker<
-  ImageSource extends CanvasImageSource,
-  State extends BaseState = BaseState
-> {
+export abstract class Looker<State extends BaseState = BaseState> {
   private eventTarget: EventTarget;
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;
@@ -98,6 +96,7 @@ export abstract class Looker<
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+    this.state.options.mimetype = getMimeType(sample);
     if (!this.state.config.thumbnail) {
       this.state.showControls = true;
     }
@@ -486,7 +485,7 @@ export abstract class Looker<
   }
 }
 
-export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
+export class FrameLooker extends Looker<FrameState> {
   private overlays: Overlay<FrameState>[];
 
   constructor(
@@ -578,7 +577,7 @@ export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
   }
 }
 
-export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
+export class ImageLooker extends Looker<ImageState> {
   private overlays: Overlay<ImageState>[];
 
   constructor(
@@ -740,23 +739,30 @@ const { aquireReader, addFrame } = (() => {
       } = message;
       if (uuid === subscription && method === "frameChunk") {
         addFrameBuffers([start, end]);
-        Array(end - start + 1)
-          .fill(0)
-          .forEach((_, i) => {
-            const frameNumber = start + i;
-            const frameSample = frames[i] || { frame_number: frameNumber };
-            const prefixedFrameSample = Object.fromEntries(
-              Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
-            ) as FrameSample;
+        for (let i = start; i <= end; i++) {
+          const frame = {
+            sample: {
+              frame_number: i,
+            },
+            overlays: [],
+          };
+          frameCache.set(new WeakRef(removeFrame), frame);
+          addFrame(i, frame);
+        }
 
-            const overlays = loadOverlays(prefixedFrameSample);
-            overlays.forEach((overlay) => {
-              streamSize += overlay.getSizeBytes();
-            });
-            const frame = { sample: frameSample, overlays };
-            frameCache.set(new WeakRef(removeFrame), frame);
-            addFrame(frameNumber, frame);
+        for (const frameSample of frames) {
+          const prefixedFrameSample = Object.fromEntries(
+            Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
+          );
+
+          const overlays = loadOverlays(prefixedFrameSample);
+          overlays.forEach((overlay) => {
+            streamSize += overlay.getSizeBytes();
           });
+          const frame = { sample: frameSample, overlays };
+          frameCache.set(new WeakRef(removeFrame), frame);
+          addFrame(frameSample.frame_number, frame);
+        }
 
         const requestMore = streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
 
@@ -824,7 +830,7 @@ const { aquireReader, addFrame } = (() => {
 
 let lookerWithReader: VideoLooker | null = null;
 
-export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
+export class VideoLooker extends Looker<VideoState> {
   private sampleOverlays: Overlay<VideoState>[] = [];
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private requestFrames: (frameNumber: number, force?: boolean) => void;
@@ -930,13 +936,14 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
     config: VideoState["config"],
     options: VideoState["options"]
   ): VideoState {
+    const firstFrame = config.support ? config.support[0] : 1;
+
     return {
       duration: null,
       seeking: false,
-      locked: false,
       fragment: null,
       playing: false,
-      frameNumber: 1,
+      frameNumber: firstFrame,
       buffering: false,
       ...this.getInitialBaseState(),
       config: { ...config },
@@ -944,11 +951,12 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
         ...this.getDefaultOptions(),
         ...options,
       },
-      buffers: [[1, 1]] as Buffers,
+      buffers: [[firstFrame, firstFrame]] as Buffers,
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
       hasPoster: false,
       waitingForVideo: false,
+      lockedToSupport: Boolean(config.support),
     };
   }
 
@@ -967,7 +975,8 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
     this.sampleOverlays = loadOverlays(
       Object.fromEntries(
         Object.entries(sample).filter(([fieldName]) => fieldName !== "frames")
-      )
+      ),
+      true
     );
 
     const providedFrames = sample.frames.length
@@ -997,12 +1006,19 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
   }
 
   pluckOverlays(state: VideoState) {
-    const overlays = this.sampleOverlays;
-    let pluckedOverlays = this.pluckedOverlays;
+    const frameNumber = state.frameNumber;
+    let hideSampleOverlays = false;
+
+    if (state.config.support && !state.lockedToSupport) {
+      const [start, end] = state.config.support;
+      hideSampleOverlays = frameNumber < start || frameNumber > end;
+    }
+
+    let pluckedOverlays = hideSampleOverlays ? [] : this.sampleOverlays;
     if (this.hasFrame(state.frameNumber)) {
       const frame = this.frames.get(state.frameNumber)?.deref();
       if (frame !== undefined) {
-        pluckedOverlays = [...overlays, ...frame.overlays];
+        pluckedOverlays = [...pluckedOverlays, ...frame.overlays];
       }
     }
 
@@ -1031,7 +1047,7 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
         getCurrentFrame: () => this.frameNumber,
         sampleId: this.state.config.sampleId,
         frameCount,
-        frameNumber: Math.max(state.frameNumber, 2),
+        frameNumber: state.frameNumber,
         update: this.updater,
         dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
       });

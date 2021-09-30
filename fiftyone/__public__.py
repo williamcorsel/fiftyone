@@ -51,6 +51,7 @@ from .core.fields import (
     EmbeddedDocumentListField,
     Field,
     FrameNumberField,
+    FrameSupportField,
     FloatField,
     GeoPointField,
     GeoLineStringField,
@@ -71,7 +72,6 @@ from .core.fields import (
 from .core.frame import Frame
 from .core.labels import (
     Label,
-    ImageLabel,
     Attribute,
     BooleanAttribute,
     CategoricalAttribute,
@@ -88,6 +88,8 @@ from .core.labels import (
     Segmentation,
     GeoLocation,
     GeoLocations,
+    VideoClassification,
+    VideoClassifications,
 )
 from .core.metadata import (
     Metadata,
@@ -159,6 +161,7 @@ from .core.stages import (
     Take,
     ToPatches,
     ToEvaluationPatches,
+    ToClips,
     ToFrames,
 )
 from .core.session import (
