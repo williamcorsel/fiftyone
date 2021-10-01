@@ -83,8 +83,13 @@ export abstract class Looker<State extends BaseState = BaseState> {
 
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
+
   protected sample: Sample;
+  protected sampleOverlays: Overlay<State>[];
+
   protected sourceSample?: Sample;
+  protected sourceSampleOverlays?: Overlay<State>[];
+
   protected state: State;
   protected readonly updater: StateUpdate<State>;
 
@@ -93,7 +98,11 @@ export abstract class Looker<State extends BaseState = BaseState> {
     config: State["config"],
     options: Optional<State["options"]> = {}
   ) {
-    this.loadSample(sample);
+    this.loadSample(sample).then((sample) => {
+      this.sample = sample;
+      this.sampleOverlays = this.loadOverlays(sample);
+      this.updater({ overlaysPrepared: true });
+    });
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
@@ -153,26 +162,19 @@ export abstract class Looker<State extends BaseState = BaseState> {
     };
   }
 
-  private requestSourceSample() {
+  protected requestSourceSample() {
     const messageUUID = uuid();
     const listener = ({ data: { sample, uuid } }) => {
       if (uuid === messageUUID) {
         this.sourceSample = sample;
-        this.loadOverlays(sample);
-        this.updater({ overlaysPrepared: true });
+        this.sourceSampleOverlays = this.loadOverlays(sample);
         labelsWorker.removeEventListener("message", listener);
       }
     };
     labelsWorker.addEventListener("message", listener);
-    labelsWorker.postMessage({
-      method: "processSample",
-      sample,
-      uuid: messageUUID,
-    });
 
     labelsWorker.postMessage({
       method: "requestSourceSample",
-      sample,
       uuid: messageUUID,
     });
   }
@@ -376,7 +378,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
     config: Readonly<State["config"]>
   ): LookerElement<State>;
 
-  protected abstract loadOverlays(sample: Sample): void;
+  protected abstract loadOverlays(sample: Sample): Overlay<State>[];
 
   protected abstract pluckOverlays(state: State): Overlay<State>[];
 
@@ -494,37 +496,26 @@ export abstract class Looker<State extends BaseState = BaseState> {
     );
   }
 
-  private loadSample(sample: Sample) {
-    const messageUUID = uuid();
-    const listener = ({ data: { sample, uuid } }) => {
-      if (uuid === messageUUID) {
-        this.sample = sample;
-        this.loadOverlays(sample);
-        this.updater({ overlaysPrepared: true });
-        labelsWorker.removeEventListener("message", listener);
-      }
-    };
-    labelsWorker.addEventListener("message", listener);
-    labelsWorker.postMessage({
-      method: "processSample",
-      sample,
-      uuid: messageUUID,
+  private loadSample(sample: Sample): Promise<Sample> {
+    return new Promise((resolve) => {
+      const messageUUID = uuid();
+      const listener = ({ data: { sample, uuid } }) => {
+        if (uuid === messageUUID) {
+          labelsWorker.removeEventListener("message", listener);
+          resolve(sample);
+        }
+      };
+      labelsWorker.addEventListener("message", listener);
+      labelsWorker.postMessage({
+        method: "processSample",
+        sample,
+        uuid: messageUUID,
+      });
     });
   }
 }
 
 export class FrameLooker extends Looker<FrameState> {
-  private overlays: Overlay<FrameState>[];
-
-  constructor(
-    sample: Sample,
-    config: FrameState["config"],
-    options: Optional<FrameState["options"]> = {}
-  ) {
-    super(sample, config, options);
-    this.overlays = [];
-  }
-
   getElements(config) {
     return getFrameElements(config, this.updater, this.getDispatchEvent());
   }
@@ -567,12 +558,12 @@ export class FrameLooker extends Looker<FrameState> {
     );
   }
 
-  loadOverlays(sample: Sample) {
-    this.overlays = loadOverlays(sample);
+  loadOverlays(sample: Sample): Overlay<FrameState>[] {
+    return loadOverlays(sample);
   }
 
   pluckOverlays() {
-    return this.overlays;
+    return this.sampleOverlays;
   }
 
   postProcess(): FrameState {
@@ -606,17 +597,6 @@ export class FrameLooker extends Looker<FrameState> {
 }
 
 export class ImageLooker extends Looker<ImageState> {
-  private overlays: Overlay<ImageState>[];
-
-  constructor(
-    sample: Sample,
-    config: ImageState["config"],
-    options: Optional<ImageState["options"]> = {}
-  ) {
-    super(sample, config, options);
-    this.overlays = [];
-  }
-
   getElements(config) {
     return getImageElements(config, this.updater, this.getDispatchEvent());
   }
@@ -659,12 +639,12 @@ export class ImageLooker extends Looker<ImageState> {
     );
   }
 
-  loadOverlays(sample: Sample) {
+  loadOverlays(sample: Sample): Overlay<ImageState>[] {
     return loadOverlays(sample);
   }
 
   pluckOverlays() {
-    return this.overlays;
+    return this.sampleOverlays;
   }
 
   postProcess(): ImageState {
@@ -858,17 +838,12 @@ const { aquireReader, addFrame } = (() => {
 let lookerWithReader: VideoLooker | null = null;
 
 export class VideoLooker extends Looker<VideoState> {
-  private sampleOverlays: Overlay<VideoState>[] = [];
   private frames: Map<number, WeakRef<Frame>> = new Map();
-  private requestFrames: (frameNumber: number, force?: boolean) => void;
-
-  constructor(
-    sample: VideoSample,
-    config: VideoState["config"],
-    options: Optional<VideoState["options"]> = {}
-  ) {
-    super(sample, config, options);
-  }
+  private requestFrames: (
+    frameNumber: number,
+    force?: boolean,
+    source?: boolean
+  ) => void;
 
   get frameNumber() {
     return this.state.frameNumber;
@@ -997,14 +972,7 @@ export class VideoLooker extends Looker<VideoState> {
     );
   }
 
-  loadOverlays(sample: VideoSample) {
-    this.sampleOverlays = loadOverlays(
-      Object.fromEntries(
-        Object.entries(sample).filter(([fieldName]) => fieldName !== "frames")
-      ),
-      true
-    );
-
+  loadOverlays(sample: VideoSample): Overlay<VideoState>[] {
     const providedFrames = sample.frames.length
       ? sample.frames
       : [{ frame_number: 1 }];
@@ -1029,18 +997,19 @@ export class VideoLooker extends Looker<VideoState> {
       this.frames.set(frame.sample.frame_number, new WeakRef(frame));
       addToBuffers([frameNumber, frameNumber], this.state.buffers);
     });
+
+    return loadOverlays(
+      Object.fromEntries(
+        Object.entries(sample).filter(([fieldName]) => fieldName !== "frames")
+      ),
+      true
+    );
   }
 
   pluckOverlays(state: VideoState) {
-    const frameNumber = state.frameNumber;
-    let hideSampleOverlays = false;
-
-    if (state.config.support && !state.options.showSource) {
-      const [start, end] = state.config.support;
-      hideSampleOverlays = frameNumber < start || frameNumber > end;
-    }
-
-    let pluckedOverlays = hideSampleOverlays ? [] : this.sampleOverlays;
+    let pluckedOverlays = state.options.showSource
+      ? this.sourceSampleOverlays || []
+      : this.sampleOverlays;
     if (this.hasFrame(state.frameNumber)) {
       const frame = this.frames.get(state.frameNumber)?.deref();
       if (frame !== undefined) {
@@ -1179,10 +1148,19 @@ export class VideoLooker extends Looker<VideoState> {
   }
 
   updateSample(sample: VideoSample) {
-    this.state.buffers = [[1, 1]];
-    this.frames.clear();
-    super.updateSample(sample);
-    this.requestFrames(this.frameNumber, true);
+    if (!this.state.options.showSource) {
+      const start = this.state.config.support
+        ? this.state.config.support[0]
+        : 1;
+      this.state.buffers = [[start, start]];
+
+      this.frames.clear();
+      super.updateSample(sample);
+      this.requestFrames(this.frameNumber, true);
+    } else {
+      this.state.buffers = [[1, 1]];
+      this.requestSourceSample();
+    }
   }
 
   private hasFrame(frameNumber: number) {
@@ -1190,6 +1168,12 @@ export class VideoLooker extends Looker<VideoState> {
       this.frames.has(frameNumber) &&
       this.frames.get(frameNumber)?.deref() !== undefined
     );
+  }
+
+  requestSourceSample() {
+    super.requestSourceSample();
+    this.frames.clear();
+    this.requestFrames(this.frameNumber, true, true);
   }
 }
 

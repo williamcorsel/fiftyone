@@ -398,7 +398,6 @@ const Looker = ({
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);
   const initialRef = useRef<boolean>(true);
-  console.log(hasSource);
 
   const [looker] = useState(() => {
     const constructor = getLookerConstructor(mimetype);
