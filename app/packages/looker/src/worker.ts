@@ -127,12 +127,14 @@ const createReader = ({
   frameCount,
   frameNumber,
   sampleId,
+  source,
   url,
 }: {
   chunkSize: number;
   frameCount: number;
   frameNumber: number;
   sampleId: string;
+  source: boolean;
   url: string;
 }): FrameStream => {
   let cancelled = false;
@@ -153,6 +155,7 @@ const createReader = ({
                 numFrames: chunkSize.toString(),
                 frameCount: frameCount.toString(),
                 sampleId,
+                source: source ? "1" : "0",
               })
           )
             .then((response: Response) => response.json())
@@ -220,6 +223,7 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 
 interface SetStream {
   sampleId: string;
+  source: boolean;
   frameNumber: number;
   frameCount: number;
   uuid: string;
@@ -229,9 +233,10 @@ interface SetStream {
 type SetStreamMethod = ReaderMethod & SetStream;
 
 const setStream = ({
-  sampleId,
   frameNumber,
   frameCount,
+  sampleId,
+  source,
   uuid,
   url,
 }: SetStream) => {
@@ -244,6 +249,7 @@ const setStream = ({
     frameCount: frameCount,
     frameNumber: frameNumber,
     sampleId,
+    source,
     url,
   });
 

@@ -85,10 +85,10 @@ export abstract class Looker<State extends BaseState = BaseState> {
   protected pluckedOverlays: Overlay<State>[];
 
   protected sample: Sample;
-  protected sampleOverlays: Overlay<State>[];
+  protected sampleOverlays: Overlay<State>[] = [];
 
   protected sourceSample?: Sample;
-  protected sourceSampleOverlays?: Overlay<State>[];
+  protected sourceSampleOverlays?: Overlay<State>[] = [];
 
   protected state: State;
   protected readonly updater: StateUpdate<State>;
@@ -168,6 +168,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
       if (uuid === messageUUID) {
         this.sourceSample = sample;
         this.sourceSampleOverlays = this.loadOverlays(sample);
+        this.updater({ overlaysPrepared: true });
         labelsWorker.removeEventListener("message", listener);
       }
     };
@@ -175,6 +176,8 @@ export abstract class Looker<State extends BaseState = BaseState> {
 
     labelsWorker.postMessage({
       method: "requestSourceSample",
+      sampleId: this.sample._sample_id || this.state.config.sampleId,
+      url: getURL(),
       uuid: messageUUID,
     });
   }
@@ -369,6 +372,17 @@ export abstract class Looker<State extends BaseState = BaseState> {
     this.updater({ destroyed: true });
   }
 
+  protected pluckOverlays(state: State): Overlay<State>[] {
+    if (
+      state.config.hasSource &&
+      state.options.showSource &&
+      this.sourceSample
+    ) {
+      return this.sourceSampleOverlays;
+    }
+    return this.sampleOverlays;
+  }
+
   protected abstract hasDefaultZoom(
     state: State,
     overlays: Overlay<State>[]
@@ -379,8 +393,6 @@ export abstract class Looker<State extends BaseState = BaseState> {
   ): LookerElement<State>;
 
   protected abstract loadOverlays(sample: Sample): Overlay<State>[];
-
-  protected abstract pluckOverlays(state: State): Overlay<State>[];
 
   protected abstract getDefaultOptions(): State["options"];
 
@@ -562,10 +574,6 @@ export class FrameLooker extends Looker<FrameState> {
     return loadOverlays(sample);
   }
 
-  pluckOverlays() {
-    return this.sampleOverlays;
-  }
-
   postProcess(): FrameState {
     if (!this.state.setZoom) {
       this.state.setZoom = this.hasResized();
@@ -626,7 +634,7 @@ export class ImageLooker extends Looker<ImageState> {
     let pan = [0, 0];
     let scale = 1;
 
-    if (state.options.zoom) {
+    if (state.options.zoom && !state.options.showSource) {
       const zoomState = zoomToContent(state, overlays);
       pan = zoomState.pan;
       scale = zoomState.scale;
@@ -641,10 +649,6 @@ export class ImageLooker extends Looker<ImageState> {
 
   loadOverlays(sample: Sample): Overlay<ImageState>[] {
     return loadOverlays(sample);
-  }
-
-  pluckOverlays() {
-    return this.sampleOverlays;
   }
 
   postProcess(): ImageState {
@@ -695,6 +699,7 @@ interface AcquireReaderOptions {
   frameCount: number;
   update: StateUpdate<VideoState>;
   dispatchEvent: (eventType: string, detail: any) => void;
+  source: boolean;
 }
 
 const { aquireReader, addFrame } = (() => {
@@ -732,6 +737,7 @@ const { aquireReader, addFrame } = (() => {
     sampleId,
     update,
     dispatchEvent,
+    source,
   }: AcquireReaderOptions): string => {
     streamSize = 0;
     nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
@@ -800,6 +806,7 @@ const { aquireReader, addFrame } = (() => {
       frameNumber,
       uuid: subscription,
       url: getURL(),
+      source,
     });
     return subscription;
   };
@@ -811,7 +818,7 @@ const { aquireReader, addFrame } = (() => {
       currentOptions = options;
       let subscription = setStream(currentOptions);
 
-      return (frameNumber: number, force?: boolean) => {
+      return (frameNumber: number, force?: boolean, source?: boolean) => {
         if (
           force ||
           !nextRange ||
@@ -819,7 +826,7 @@ const { aquireReader, addFrame } = (() => {
         ) {
           force && frameCache.reset();
           nextRange = [frameNumber, frameNumber + CHUNK_SIZE];
-          subscription = setStream({ ...currentOptions, frameNumber });
+          subscription = setStream({ ...currentOptions, frameNumber, source });
         } else if (!requestingFrames) {
           frameReader.postMessage({
             method: "requestFrameChunk",
@@ -1045,6 +1052,7 @@ export class VideoLooker extends Looker<VideoState> {
         frameNumber: state.frameNumber,
         update: this.updater,
         dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
+        source: this.state.options.showSource,
       });
       lookerWithReader && lookerWithReader.pause();
       lookerWithReader = this;

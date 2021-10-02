@@ -402,34 +402,37 @@ const selectedFields = selectorFamily({
     const view_ = get(view);
     const fields_ = { ...get(fields(dimension)) };
     const video = get(isVideoDataset);
-    view_.forEach(({ _cls, kwargs }) => {
-      if (_cls === "fiftyone.core.stages.SelectFields") {
-        const supplied = kwargs[0][1] ? kwargs[0][1] : [];
-        let names = new Set([...supplied, ...RESERVED_FIELDS]);
-        if (video && dimension === "frame") {
-          names = new Set(
-            Array.from(names).map((n) => n.slice("frames.".length))
-          );
-        }
-        Object.keys(fields_).forEach((f) => {
-          if (!names.has(f)) {
-            delete fields_[f];
-          }
-        });
-      } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
-        const supplied = kwargs[0][1] ? kwargs[0][1] : [];
-        let names = Array.from(supplied);
+    const source = get(atoms.modalSourceSample);
 
-        if (video && dimension === "frame") {
-          names = names.map((n) => n.slice("frames.".length));
-        } else if (video) {
-          names = names.filter((n) => n.startsWith("frames."));
+    !source &&
+      view_.forEach(({ _cls, kwargs }) => {
+        if (_cls === "fiftyone.core.stages.SelectFields") {
+          const supplied = kwargs[0][1] ? kwargs[0][1] : [];
+          let names = new Set([...supplied, ...RESERVED_FIELDS]);
+          if (video && dimension === "frame") {
+            names = new Set(
+              Array.from(names).map((n) => n.slice("frames.".length))
+            );
+          }
+          Object.keys(fields_).forEach((f) => {
+            if (!names.has(f)) {
+              delete fields_[f];
+            }
+          });
+        } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
+          const supplied = kwargs[0][1] ? kwargs[0][1] : [];
+          let names = Array.from(supplied);
+
+          if (video && dimension === "frame") {
+            names = names.map((n) => n.slice("frames.".length));
+          } else if (video) {
+            names = names.filter((n) => n.startsWith("frames."));
+          }
+          names.forEach((n) => {
+            delete fields_[n];
+          });
         }
-        names.forEach((n) => {
-          delete fields_[n];
-        });
-      }
-    });
+      });
     return fields_;
   },
 });

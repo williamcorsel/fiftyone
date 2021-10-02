@@ -344,6 +344,11 @@ const lookerOptions = selector({
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
     ({ snapshot, set }) => async (event: CustomEvent) => {
+      if (event.detail.showSource !== undefined) {
+        set(atoms.modalSourceSample, event.detail.showSource);
+        return;
+      }
+
       const currentOptions = await snapshot.getPromise(
         atoms.savedLookerOptions
       );

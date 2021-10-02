@@ -189,6 +189,7 @@ class FramesHandler(tornado.web.RequestHandler):
         start_frame = int(self.get_argument("frameNumber"))
         # pylint: disable=no-value-for-parameter
         frame_count = int(self.get_argument("frameCount"))
+        source = self.get_argument("source", None)
 
         if sample_id is None or start_frame is None:
             raise ValueError("error")
@@ -199,6 +200,8 @@ class FramesHandler(tornado.web.RequestHandler):
             frame_count,
         )
         state = fos.StateDescription.from_dict(StateHandler.state)
+        if source:
+            view = state.dataset
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
@@ -233,16 +236,11 @@ class SampleHandler(tornado.web.RequestHandler):
         # pylint: disable=no-value-for-parameter
         sample_id = self.get_argument("sampleId", None)
         state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset
-
-        view = fov.make_optimized_select_view(view, sample_id)
+        view = fov.make_optimized_select_view(state.dataset, sample_id)
         view = page_view(view)
 
         [sample] = await foo.aggregate(
-            StateHandler.sample_collection(),
+            StateHandler.sample_collection(source=True),
             view._pipeline(attach_frames=True, detach_frames=False),
         ).to_list(1)
         convert(sample)
@@ -501,10 +499,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         return FiftyOneJSONEncoder.loads(data)
 
     @staticmethod
-    def sample_collection():
-        """Getter for the current sample collection."""
+    def sample_collection(source=False):
+        """Getter for the current sample collection.
+
+        Args:
+            source (False): request the source collection
+        """
         state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
+        if source:
+            dataset = state.dataset
+        elif state.view is not None:
             dataset = state.view._dataset
         else:
             dataset = state.dataset
