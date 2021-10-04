@@ -1129,24 +1129,6 @@ _LABEL_LIST_FIELDS = (
 
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
 
-_CONFIDENCE_LABELS = (
-    Classification,
-    Detection,
-    Keypoint,
-    Polyline,
-    VideoClassification,
-)
-
-_LABEL_LABELS = (
-    Classification,
-    Detection,
-    Keypoint,
-    Polyline,
-    VideoClassification,
-)
-
-_SUPPORT_LABELS = (VideoClassification,)
-
 _PATCHES_FIELDS = (
     Detection,
     Detections,

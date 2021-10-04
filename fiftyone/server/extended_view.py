@@ -164,7 +164,9 @@ def _make_filter_stages(
         else:
             view_field = get_view_field(fields_map, path)
 
-            if isinstance(field, fof.ListField):
+            if isinstance(field, fof.ListField) and not isinstance(
+                field, fof.FrameSupportField
+            ):
                 filter = _make_scalar_expression(F(), args, field.field)
                 if filter is not None:
                     expr = view_field.filter(filter).length() > 0
@@ -219,10 +221,10 @@ def _is_support(field):
         return True
 
     if isinstance(field, fof.EmbeddedDocumentField):
-        if field.document_type in {
-            fol.VideoClassification,
-            fol.VideoClassifications,
-        }:
+        if field.document_type in (
+            fol.TemporalDetection,
+            fol.TemporalDetections,
+        ):
             return True
 
     return False
@@ -248,7 +250,7 @@ def _make_scalar_expression(f, args, field):
 
     elif cls == _NUMERIC_FILTER and _is_support(field):
         mn, mx = args["range"]
-        expr = F.any(f.map((F() >= mn) & (F() <= mx)))
+        expr = (f[0] >= mn) & (f[1] <= mx)
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
         expr = (f >= mn) & (f <= mx)
