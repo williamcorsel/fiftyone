@@ -27,7 +27,7 @@ export const unsupportedFields = selectorFamily<string[], boolean>({
 
 export const activeFields = atom<string[]>({
   key: "activeFields",
-  default: selectors.labelPaths(false),
+  default: selectors.labelPaths({ modal: false }),
 });
 
 export const activeModalFields = atom<string[]>({
@@ -41,7 +41,7 @@ export const activeLabels = selectorFamily<
 >({
   key: "activeLabels",
   get: ({ modal, frames }) => ({ get }) => {
-    const paths = get(selectors.labelPaths(modal));
+    const paths = get(selectors.labelPaths({ modal }));
     return get(modal ? activeModalFields : activeFields)
       .filter((v) => paths.includes(v))
       .filter((v) =>

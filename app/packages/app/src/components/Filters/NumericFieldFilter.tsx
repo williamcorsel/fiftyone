@@ -10,7 +10,12 @@ import {
   INT_FIELD,
 } from "../../utils/labels";
 import { useExpand } from "./hooks";
-import { boundsAtom, rangeAtom, noneAtom } from "./NumericFieldFilter.state";
+import {
+  boundsAtom,
+  rangeAtom,
+  noneAtom,
+  modalBoundsAtom,
+} from "./NumericFieldFilter.state";
 import { countsAtom, noneCount } from "./atoms";
 import CategoricalFilter from "./CategoricalFilter";
 
@@ -38,7 +43,11 @@ const NumericFieldFilter = ({ expanded, entry, modal }) => {
       ) : (
         <NamedRangeSlider
           color={entry.color}
-          boundsAtom={boundsAtom({ path: entry.path })}
+          boundsAtom={
+            modal
+              ? modalBoundsAtom({ path: entry.path })
+              : boundsAtom({ path: entry.path })
+          }
           noneCountAtom={noneCount({ modal, path: entry.path })}
           valueAtom={rangeAtom({ modal, path: entry.path })}
           noneAtom={noneAtom({ modal, path: entry.path })}

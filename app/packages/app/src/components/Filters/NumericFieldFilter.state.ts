@@ -13,7 +13,7 @@ import {
   VALID_LIST_FIELDS,
   VALID_NUMERIC_TYPES,
 } from "../../utils/labels";
-import { filterStage } from "./atoms";
+import { filterStage, modalStats } from "./atoms";
 
 export const isNumericField = selectorFamily<
   boolean,
@@ -57,7 +57,11 @@ const getFilter = (
   path: string,
   defaultRange?: Range
 ): NumericFilter => {
-  const bounds = get(boundsAtom({ path, defaultRange }));
+  const bounds = get(
+    modal
+      ? modalBoundsAtom({ path, defaultRange })
+      : boundsAtom({ path, defaultRange })
+  );
   const result = {
     _CLS: "numeric",
     ...{
@@ -85,7 +89,11 @@ const setFilter = (
   value: boolean | Range | DefaultValue,
   defaultRange: Range | null = null
 ) => {
-  const bounds = get(boundsAtom({ path, defaultRange }));
+  const bounds = get(
+    modal
+      ? modalBoundsAtom({ path, defaultRange })
+      : boundsAtom({ path, defaultRange })
+  );
   const filter = {
     range: bounds,
     ...getFilter(get, modal, path, defaultRange),
@@ -114,7 +122,7 @@ export const boundsAtom = selectorFamily<
 >({
   key: "numericFieldBounds",
   get: ({ path, defaultRange }) => ({ get }) => {
-    let bounds = (get(selectors.datasetStats) ?? []).reduce(
+    let bounds: [number, number] = (get(selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
         if (cur.name === path && cur._CLS === AGGS.BOUNDS) {
           return cur.result;
@@ -136,7 +144,44 @@ export const boundsAtom = selectorFamily<
         minMax > bounds[1] ? minMax : bounds[1],
       ];
     }
-    return [bounds[0], bounds[1]];
+
+    return bounds;
+  },
+});
+
+export const modalBoundsAtom = selectorFamily<
+  Range,
+  {
+    path: string;
+    defaultRange?: Range;
+  }
+>({
+  key: "numericFieldBounds",
+  get: ({ path, defaultRange }) => ({ get }) => {
+    let bounds: [number, number] = (get(modalStats) ?? []).reduce(
+      (acc, cur) => {
+        if (cur.name === path && cur._CLS === AGGS.BOUNDS) {
+          return cur.result;
+        }
+        return acc;
+      },
+      [null, null]
+    );
+
+    if (bounds.every((b) => b === null)) {
+      return bounds;
+    }
+
+    let [maxMin, minMax]: Range = [null, null];
+    if (defaultRange) {
+      [maxMin, minMax] = defaultRange;
+      bounds = [
+        maxMin < bounds[0] ? maxMin : bounds[0],
+        minMax > bounds[1] ? minMax : bounds[1],
+      ];
+    }
+
+    return bounds;
   },
 });
 
@@ -186,7 +231,11 @@ export const fieldIsFiltered = selectorFamily<
       get(noneAtom({ modal, path, defaultRange })),
       get(rangeAtom({ modal, path, defaultRange })),
     ];
-    const bounds = get(boundsAtom({ path, defaultRange }));
+    const bounds = get(
+      modal
+        ? modalBoundsAtom({ path, defaultRange })
+        : boundsAtom({ path, defaultRange })
+    );
 
     return (
       !none ||

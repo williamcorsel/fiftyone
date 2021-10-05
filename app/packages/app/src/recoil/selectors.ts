@@ -338,7 +338,7 @@ export const labelTagsPaths = selectorFamily<string[], boolean>({
   key: "labelTagsPaths",
   get: (modal) => ({ get }) => {
     const types = get(labelTypesMap(modal));
-    return get(labelPaths(modal)).map((path) => {
+    return get(labelPaths({ modal })).map((path) => {
       path = VALID_LIST_TYPES.includes(types[path])
         ? `${path}.${types[path].toLocaleLowerCase()}`
         : path;
@@ -349,13 +349,13 @@ export const labelTagsPaths = selectorFamily<string[], boolean>({
 
 export const fieldSchema = selectorFamily<
   [],
-  { modal: boolean; dimension: string }
+  { modal: boolean; dimension: string; forceSource?: boolean }
 >({
   key: "fieldSchema",
   get: (params) => ({ get }) => {
     const state = get(atoms.stateDescription);
     const d =
-      params.modal && get(atoms.modalSourceSample)
+      (params.modal && get(atoms.modalSourceSample)) || params.forceSource
         ? state.root_dataset
         : state.dataset;
 
@@ -396,7 +396,7 @@ const primitiveFilter = (f) => {
 
 const fields = selectorFamily<
   { [key: string]: SerializableParam },
-  { modal: boolean; dimension: string }
+  { modal: boolean; dimension: string; forceSource?: boolean }
 >({
   key: "fields",
   get: (params) => ({ get }) => {
@@ -409,7 +409,7 @@ const fields = selectorFamily<
 
 const selectedFields = selectorFamily<
   any,
-  { modal: boolean; dimension: string }
+  { modal: boolean; dimension: string; forceSource?: boolean }
 >({
   key: "selectedFields",
   get: (params) => ({ get }) => {
@@ -480,7 +480,7 @@ export const fieldPaths = selectorFamily<string[], boolean>({
 
 const labels = selectorFamily<
   { name: string; embedded_doc_type: string }[],
-  { dimension: string; modal: boolean }
+  { dimension: string; modal: boolean; forceSource?: boolean }
 >({
   key: "labels",
   get: (params) => ({ get }) => {
@@ -495,7 +495,7 @@ const labels = selectorFamily<
 
 export const labelNames = selectorFamily<
   string[],
-  { dimension: string; modal: boolean }
+  { dimension: string; modal: boolean; forceSource?: boolean }
 >({
   key: "labelNames",
   get: (params) => ({ get }) => {
@@ -504,11 +504,18 @@ export const labelNames = selectorFamily<
   },
 });
 
-export const labelPaths = selectorFamily<string[], boolean>({
+export const labelPaths = selectorFamily<
+  string[],
+  { modal: boolean; forceSource?: boolean }
+>({
   key: "labelPaths",
-  get: (modal) => ({ get }) => {
-    const sampleLabels = get(labelNames({ modal, dimension: "sample" }));
-    const frameLabels = get(labelNames({ modal, dimension: "frame" }));
+  get: ({ modal, forceSource }) => ({ get }) => {
+    const sampleLabels = get(
+      labelNames({ modal, forceSource, dimension: "sample" })
+    );
+    const frameLabels = get(
+      labelNames({ modal, forceSource, dimension: "frame" })
+    );
     return sampleLabels.concat(frameLabels.map((l) => "frames." + l));
   },
 });

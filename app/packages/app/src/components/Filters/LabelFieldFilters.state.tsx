@@ -161,11 +161,11 @@ export const fieldIsFiltered = selectorFamily<
   key: "fieldIsFiltered",
   get: ({ path, modal }) => ({ get }) => {
     const isArgs = { path, modal };
-    if (get(booleanField.isBooleanField(path))) {
+    if (get(booleanField.isBooleanField({ modal, field: path }))) {
       return get(booleanField.fieldIsFiltered(isArgs));
-    } else if (get(numericField.isNumericField(path))) {
+    } else if (get(numericField.isNumericField({ modal, field: path }))) {
       return get(numericField.fieldIsFiltered(isArgs));
-    } else if (get(stringField.isStringField(path))) {
+    } else if (get(stringField.isStringField({ modal, field: path }))) {
       return get(stringField.fieldIsFiltered(isArgs));
     }
     if (path.startsWith("_label_tags.")) {

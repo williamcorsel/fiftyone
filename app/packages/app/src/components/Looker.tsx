@@ -349,6 +349,20 @@ const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
     ({ snapshot, set }) => async (event: CustomEvent) => {
       if (event.detail.showSource !== undefined) {
+        const sourceLabelPaths = await snapshot.getPromise(
+          selectors.labelPaths({ modal: true, forceSource: true })
+        );
+        const labelPaths = await snapshot.getPromise(
+          selectors.labelPaths({ modal: true })
+        );
+
+        const activate = sourceLabelPaths.filter(
+          (p) => !labelPaths.includes(p)
+        );
+        const current = await snapshot.getPromise(labelAtoms.activeModalFields);
+
+        set(labelAtoms.activeModalFields, [...current, ...activate]);
+
         set(atoms.modalSourceSample, event.detail.showSource);
         return;
       }

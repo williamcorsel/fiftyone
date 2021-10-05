@@ -1074,13 +1074,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         uuid=None,
         selected=[],
         search="",
+        source=False,
         asc=False,
         count=True,
         limit=_LIST_LIMIT,
         sample_id=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
+        if state.view is not None and not source:
             view = state.view
         elif state.dataset is not None:
             view = state.dataset

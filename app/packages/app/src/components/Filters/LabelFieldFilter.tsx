@@ -106,10 +106,17 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
                 defaultRange: [0, 1],
               })}
               noneCountAtom={noneCount({ path: cPath, modal })}
-              boundsAtom={numericField.boundsAtom({
-                path: cPath,
-                defaultRange: [0, 1],
-              })}
+              boundsAtom={
+                modal
+                  ? numericField.modalBoundsAtom({
+                      path: cPath,
+                      defaultRange: [0, 1],
+                    })
+                  : numericField.boundsAtom({
+                      path: cPath,
+                      defaultRange: [0, 1],
+                    })
+              }
               valueAtom={numericField.rangeAtom({
                 modal,
                 path: cPath,
@@ -127,9 +134,13 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
                 path: sPath,
               })}
               noneCountAtom={noneCount({ path: sPath, modal })}
-              boundsAtom={numericField.boundsAtom({
-                path: sPath,
-              })}
+              boundsAtom={
+                modal
+                  ? numericField.boundsAtom({ path: sPath })
+                  : numericField.boundsAtom({
+                      path: sPath,
+                    })
+              }
               valueAtom={numericField.rangeAtom({
                 modal,
                 path: sPath,

@@ -71,7 +71,7 @@ const SliderStyled = styled(SliderUnstyled)`
 
   .valueLabel > span > span {
     color: ${({ theme }) => theme.font};
-    background: ${({ theme }) => theme.backgroundDark};
+    background: ${({ theme }) => theme.boundackgroundDark};
     border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   }
 `;
