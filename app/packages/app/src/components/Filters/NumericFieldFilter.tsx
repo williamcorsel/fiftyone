@@ -19,7 +19,9 @@ const INT_FIELDS = [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD];
 const NumericFieldFilter = ({ expanded, entry, modal }) => {
   const [ref, props] = useExpand(expanded);
   const type = useRecoilValue(selectors.fieldType(entry.path));
-  const subfield = useRecoilValue(selectors.primitivesSubfieldMap("sample"));
+  const subfield = useRecoilValue(
+    selectors.primitivesSubfieldMap({ modal, dimension: "sample" })
+  );
 
   return (
     <animated.div style={props}>

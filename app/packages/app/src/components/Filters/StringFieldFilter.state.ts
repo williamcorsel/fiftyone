@@ -15,16 +15,21 @@ import { filterStage, FilterParams } from "./atoms";
 
 export const LIST_LIMIT = 200;
 
-export const isStringField = selectorFamily<boolean, string>({
+export const isStringField = selectorFamily<
+  boolean,
+  { modal: boolean; field: string }
+>({
   key: "isStringField",
-  get: (name) => ({ get }) => {
-    let map = get(selectors.primitivesMap("sample"));
+  get: ({ modal, field }) => ({ get }) => {
+    let map = get(selectors.primitivesMap({ modal, dimension: "sample" }));
 
-    if (VALID_LIST_FIELDS.includes(map[name])) {
-      map = get(selectors.primitivesSubfieldMap("sample"));
+    if (VALID_LIST_FIELDS.includes(map[field])) {
+      map = get(
+        selectors.primitivesSubfieldMap({ modal, dimension: "sample" })
+      );
     }
 
-    return [OBJECT_ID_FIELD, STRING_FIELD].includes(map[name]);
+    return [OBJECT_ID_FIELD, STRING_FIELD].includes(map[field]);
   },
 });
 

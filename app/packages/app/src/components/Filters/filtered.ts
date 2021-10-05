@@ -21,17 +21,19 @@ const clearFilters = ({ current, get, modal, paths, set }) => {
 export const filteredScalars = selectorFamily<string[], boolean>({
   key: "filteredScalars",
   get: (modal) => ({ get }) => {
-    const scalars = get(selectors.primitiveNames("sample"));
+    const scalars = get(
+      selectors.primitiveNames({ modal, dimension: "sample" })
+    );
 
     let filtered = [];
     scalars.forEach((path) => {
-      if (get(booleanFiltering.isBooleanField(path))) {
+      if (get(booleanFiltering.isBooleanField({ modal, field: path }))) {
         get(booleanFiltering.fieldIsFiltered({ modal, path })) &&
           filtered.push(path);
       } else if (get(numericFiltering.isNumericField(path))) {
         get(numericFiltering.fieldIsFiltered({ modal, path })) &&
           filtered.push(path);
-      } else if (get(stringFiltering.isStringField(path))) {
+      } else if (get(stringFiltering.isStringField({ modal, field: path }))) {
         get(stringFiltering.fieldIsFiltered({ modal, path })) &&
           filtered.push(path);
       }
@@ -59,7 +61,7 @@ export const numFilteredScalars = selectorFamily<number, boolean>({
 export const filteredLabels = selectorFamily<string[], boolean>({
   key: "filteredLabels",
   get: (modal) => ({ get }) => {
-    const labels = get(selectors.labelNames("sample"));
+    const labels = get(selectors.labelNames({ modal, dimension: "sample" }));
 
     let filtered = [];
     labels.forEach((path) => {
@@ -89,7 +91,7 @@ export const numFilteredLabels = selectorFamily<number, boolean>({
 export const filteredFrameLabels = selectorFamily<string[], boolean>({
   key: "filteredFrameLabels",
   get: (modal) => ({ get }) => {
-    const labels = get(selectors.labelNames("frame"));
+    const labels = get(selectors.labelNames({ modal, dimension: "frame" }));
 
     let filtered = [];
     labels.forEach((name) => {
@@ -132,7 +134,7 @@ const clearLabelFilters = ({
   const expandPaths = (values) =>
     values.reduce((acc, path): string[] => {
       path = `${path}${labelFiltering.getPathExtension(
-        get(selectors.labelTypesMap)[path]
+        get(selectors.labelTypesMap(modal))[path]
       )}`;
       const cPath = `${path}.confidence`;
       const lPath = `${path}.label`;

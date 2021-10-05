@@ -1,4 +1,4 @@
-import { atom, selector, selectorFamily } from "recoil";
+import { atom, atomFamily, selectorFamily } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
 import { isLabelField } from "./LabelFieldFilters.state";
@@ -6,26 +6,28 @@ import { isBooleanField } from "./BooleanFieldFilter.state";
 import { isNumericField } from "./NumericFieldFilter.state";
 import { isStringField } from "./StringFieldFilter.state";
 
-export const unsupportedFields = selector<string[]>({
+export const unsupportedFields = selectorFamily<string[], boolean>({
   key: "unsupportedFields",
-  get: ({ get }) => {
-    const fields = get(selectors.fieldPaths);
+  get: (modal) => ({ get }) => {
+    const fields = get(selectors.fieldPaths(modal));
     return fields.filter(
       (f) =>
         !f.startsWith("frames.") &&
-        !get(isLabelField(f)) &&
-        !get(isNumericField(f)) &&
-        !get(isStringField(f)) &&
-        !get(isBooleanField(f)) &&
+        !get(isLabelField({ modal, field: f })) &&
+        !get(isNumericField({ modal, field: f })) &&
+        !get(isStringField({ modal, field: f })) &&
+        !get(isBooleanField({ modal, field: f })) &&
         !["metadata", "tags"].includes(f) &&
-        !get(selectors.primitiveNames("sample")).includes(f)
+        !get(selectors.primitiveNames({ modal, dimension: "sample" })).includes(
+          f
+        )
     );
   },
 });
 
 export const activeFields = atom<string[]>({
   key: "activeFields",
-  default: selectors.labelPaths,
+  default: selectors.labelPaths(false),
 });
 
 export const activeModalFields = atom<string[]>({
@@ -39,7 +41,7 @@ export const activeLabels = selectorFamily<
 >({
   key: "activeLabels",
   get: ({ modal, frames }) => ({ get }) => {
-    const paths = get(selectors.labelPaths);
+    const paths = get(selectors.labelPaths(modal));
     return get(modal ? activeModalFields : activeFields)
       .filter((v) => paths.includes(v))
       .filter((v) =>
@@ -49,7 +51,7 @@ export const activeLabels = selectorFamily<
   set: ({ modal, frames }) => ({ get, set }, value) => {
     if (Array.isArray(value)) {
       let active = get(modal ? activeModalFields : activeFields).filter((v) =>
-        get(isLabelField(v)) &&
+        get(isLabelField({ modal, field: v })) &&
         (frames ? v.startsWith("frames.") : !v.startsWith("frames."))
           ? value.includes(v)
           : true
@@ -76,7 +78,9 @@ export const activeLabelPaths = selectorFamily<string[], boolean>({
 export const activeScalars = selectorFamily<string[], boolean>({
   key: "activeScalars",
   get: (modal) => ({ get }) => {
-    const scalars = get(selectors.primitiveNames("sample"));
+    const scalars = get(
+      selectors.primitiveNames({ modal, dimension: "sample" })
+    );
     return get(modal ? activeModalFields : activeFields).filter((v) =>
       scalars.includes(v)
     );
@@ -86,7 +90,9 @@ export const activeScalars = selectorFamily<string[], boolean>({
       return [];
     }
     if (Array.isArray(value)) {
-      const scalars = get(selectors.primitiveNames("sample"));
+      const scalars = get(
+        selectors.primitiveNames({ modal, dimension: "sample" })
+      );
       const prevActiveScalars = get(activeScalars(modal));
       let active = get(modal ? activeModalFields : activeFields).filter((v) =>
         scalars.includes(v) ? value.includes(v) : true

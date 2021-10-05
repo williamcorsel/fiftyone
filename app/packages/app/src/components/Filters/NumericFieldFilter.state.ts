@@ -15,25 +15,33 @@ import {
 } from "../../utils/labels";
 import { filterStage } from "./atoms";
 
-export const isNumericField = selectorFamily<boolean, string>({
+export const isNumericField = selectorFamily<
+  boolean,
+  { modal: boolean; field: string }
+>({
   key: "isNumericField",
-  get: (name) => ({ get }) => {
-    let map = get(selectors.primitivesMap("sample"));
+  get: ({ modal, field }) => ({ get }) => {
+    let map = get(selectors.primitivesMap({ modal, dimension: "sample" }));
 
-    if (VALID_LIST_FIELDS.includes(map[name])) {
-      map = get(selectors.primitivesSubfieldMap("sample"));
+    if (VALID_LIST_FIELDS.includes(map[field])) {
+      map = get(
+        selectors.primitivesSubfieldMap({ modal, dimension: "sample" })
+      );
     }
 
-    return VALID_NUMERIC_TYPES.includes(map[name]);
+    return VALID_NUMERIC_TYPES.includes(map[field]);
   },
 });
 
-export const isSupportField = selectorFamily<boolean, string>({
+export const isSupportField = selectorFamily<
+  boolean,
+  { modal: boolean; field: string }
+>({
   key: "isSupportField",
-  get: (name) => ({ get }) => {
-    let map = get(selectors.primitivesMap("sample"));
+  get: ({ modal, field }) => ({ get }) => {
+    let map = get(selectors.primitivesMap({ modal, dimension: "sample" }));
 
-    return FRAME_SUPPORT_FIELD === map[name];
+    return FRAME_SUPPORT_FIELD === map[field];
   },
 });
 

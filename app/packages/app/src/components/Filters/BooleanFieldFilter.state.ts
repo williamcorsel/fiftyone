@@ -143,15 +143,20 @@ export const selectedValuesAtom = selectorFamily<
   },
 });
 
-export const isBooleanField = selectorFamily<boolean, string>({
+export const isBooleanField = selectorFamily<
+  boolean,
+  { modal: boolean; field: string }
+>({
   key: "isBooleanField",
-  get: (name) => ({ get }) => {
-    let map = get(selectors.primitivesMap("sample"));
+  get: ({ modal, field }) => ({ get }) => {
+    let map = get(selectors.primitivesMap({ modal, dimension: "sample" }));
 
-    if (VALID_LIST_FIELDS.includes(map[name])) {
-      map = get(selectors.primitivesSubfieldMap("sample"));
+    if (VALID_LIST_FIELDS.includes(map[field])) {
+      map = get(
+        selectors.primitivesSubfieldMap({ modal, dimension: "sample" })
+      );
     }
 
-    return map[name] === BOOLEAN_FIELD;
+    return map[field] === BOOLEAN_FIELD;
   },
 });

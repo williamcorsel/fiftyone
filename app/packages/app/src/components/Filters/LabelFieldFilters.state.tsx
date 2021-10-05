@@ -1,4 +1,4 @@
-import { selector, selectorFamily } from "recoil";
+import { selectorFamily } from "recoil";
 
 import * as utils from "./utils";
 import * as booleanField from "./BooleanFieldFilter.state";
@@ -7,11 +7,7 @@ import * as stringField from "./StringFieldFilter.state";
 import * as atoms from "../../recoil/atoms";
 import * as filterAtoms from "./atoms";
 import * as selectors from "../../recoil/selectors";
-import {
-  LABEL_LIST,
-  RESERVED_FIELDS,
-  VALID_LIST_TYPES,
-} from "../../utils/labels";
+import { LABEL_LIST, VALID_LIST_TYPES } from "../../utils/labels";
 
 interface Label {
   confidence?: number;
@@ -36,10 +32,12 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
   get: (modal) => ({ get }) => {
     const labels = get(modal ? utils.activeModalFields : utils.activeFields);
     const filters = {};
-    const typeMap = get(selectors.labelTypesMap);
+    const typeMap = get(selectors.labelTypesMap(modal));
     const hiddenLabels = modal ? get(atoms.hiddenLabels) : null;
 
-    const primitives = get(selectors.primitiveNames("sample"));
+    const primitives = get(
+      selectors.primitiveNames({ modal, dimension: "sample" })
+    );
     for (const field of labels) {
       if (primitives.includes(field)) {
         if (get(numericField.isNumericField(field))) {
@@ -53,7 +51,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
             const noNone = none && value === undefined;
             return inRange || noNone;
           };
-        } else if (get(stringField.isStringField(field))) {
+        } else if (get(stringField.isStringField({ modal, field }))) {
           const [values, exclude] = [
             get(stringField.selectedValuesAtom({ modal, path: field })),
             get(stringField.excludeAtom({ modal, path: field })),
@@ -67,7 +65,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
 
             return included || values.length === 0;
           };
-        } else if (get(booleanField.isBooleanField(field))) {
+        } else if (get(booleanField.isBooleanField({ modal, field }))) {
           const [trueValue, falseValue, noneValue] = [
             get(booleanField.trueAtom({ modal, path: field })),
             get(booleanField.falseAtom({ modal, path: field })),
@@ -182,7 +180,9 @@ export const fieldIsFiltered = selectorFamily<
       );
     }
 
-    path = `${path}${getPathExtension(get(selectors.labelTypesMap)[path])}`;
+    path = `${path}${getPathExtension(
+      get(selectors.labelTypesMap(modal))[path]
+    )}`;
     const cPath = `${path}.confidence`;
     const lPath = `${path}.label`;
     const hasHiddenLabels = modal
@@ -203,11 +203,18 @@ export const fieldIsFiltered = selectorFamily<
   },
 });
 
-export const isLabelField = selectorFamily<boolean, string>({
+export const isLabelField = selectorFamily<
+  boolean,
+  { modal: boolean; field: string }
+>({
   key: "isLabelField",
-  get: (field) => ({ get }) => {
-    const names = get(selectors.labelNames("sample")).concat(
-      get(selectors.labelNames("frame")).map((l) => "frames." + l)
+  get: ({ modal, field }) => ({ get }) => {
+    const names = get(
+      selectors.labelNames({ modal, dimension: "sample" })
+    ).concat(
+      get(selectors.labelNames({ modal, dimension: "frame" })).map(
+        (l) => "frames." + l
+      )
     );
     return names.includes(field);
   },
