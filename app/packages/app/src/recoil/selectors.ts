@@ -334,11 +334,11 @@ export const currentCount = selector<number | null>({
   },
 });
 
-export const labelTagsPaths = selector({
+export const labelTagsPaths = selectorFamily<string[], boolean>({
   key: "labelTagsPaths",
-  get: ({ get }) => {
-    const types = get(labelTypesMap);
-    return get(labelPaths).map((path) => {
+  get: (modal) => ({ get }) => {
+    const types = get(labelTypesMap(modal));
+    return get(labelPaths(modal)).map((path) => {
       path = VALID_LIST_TYPES.includes(types[path])
         ? `${path}.${types[path].toLocaleLowerCase()}`
         : path;
@@ -348,7 +348,7 @@ export const labelTagsPaths = selector({
 });
 
 export const fieldSchema = selectorFamily<
-  object,
+  [],
   { modal: boolean; dimension: string }
 >({
   key: "fieldSchema",
@@ -589,27 +589,34 @@ export const primitiveSubfields = selectorFamily<
   },
 });
 
-export const primitivesSchema = selectorFamily({
+export const primitivesSchema = selectorFamily<
+  [],
+  { modal: boolean; dimension: string }
+>({
   key: "primitivesSchema",
-  get: (dimension: string) => ({ get }) => {
-    return Object.fromEntries(
-      get(primitives(dimension)).map((p) => [p.name, p])
-    );
+  get: (params) => ({ get }) => {
+    return Object.fromEntries(get(primitives(params)).map((p) => [p.name, p]));
   },
 });
 
-export const labelTuples = selectorFamily({
+export const labelTuples = selectorFamily<
+  [string, string][],
+  { modal: boolean; dimension: string }
+>({
   key: "labelTuples",
-  get: (dimension: string) => ({ get }) => {
-    const types = get(labelTypes(dimension));
-    return get(labelNames(dimension)).map((n, i) => [n, types[i]]);
+  get: (params) => ({ get }) => {
+    const types = get(labelTypes(params));
+    return get(labelNames(params)).map((n, i) => [n, types[i]]);
   },
 });
 
-export const labelMap = selectorFamily({
+export const labelMap = selectorFamily<
+  { [key: string]: string },
+  { modal: boolean; dimension: string }
+>({
   key: "labelMap",
-  get: (dimension: string) => ({ get }) => {
-    const tuples = get(labelTuples(dimension));
+  get: (params) => ({ get }) => {
+    const tuples = get(labelTuples(params));
     return tuples.reduce((acc, cur) => {
       return {
         [cur[0]]: cur[1],
@@ -819,12 +826,15 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
   },
 });
 
-export const fieldType = selectorFamily<string, string>({
+export const fieldType = selectorFamily<
+  string,
+  { modal: boolean; path: string }
+>({
   key: "fieldType",
-  get: (path) => ({ get }) => {
+  get: ({ modal, path }) => ({ get }) => {
     const frame = path.startsWith("frames.") && get(isVideoDataset);
 
-    const entry = get(fields(frame ? "frame" : "sample"));
+    const entry = get(fields({ modal, dimension: frame ? "frame" : "sample" }));
     return frame
       ? entry[path.slice("frames.".length)].ftype
       : entry[path].ftype;

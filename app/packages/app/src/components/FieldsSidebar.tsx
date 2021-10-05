@@ -431,12 +431,14 @@ type LabelsCellProps = {
 
 const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   const key = frames ? "frame" : "sample";
-  const labels = useRecoilValue(selectors.labelNames(key));
+  const labels = useRecoilValue(
+    selectors.labelNames({ modal, dimension: key })
+  );
   const [activeLabels, setActiveLabels] = useRecoilState(
     fieldAtoms.activeLabels({ modal, frames })
   );
   const video = useRecoilValue(selectors.isVideoDataset);
-  const types = useRecoilValue(selectors.labelTypesMap);
+  const types = useRecoilValue(selectors.labelTypesMap(modal));
 
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, count] = [

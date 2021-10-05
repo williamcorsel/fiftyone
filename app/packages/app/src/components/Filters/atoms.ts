@@ -260,7 +260,7 @@ export const labelTagCounts = selectorFamily<
   key: "labelTagCounts",
   get: (modal) => ({ get }) => {
     const stats = get(modal ? modalStats : selectors.datasetStats);
-    const paths = get(selectors.labelTagsPaths);
+    const paths = get(selectors.labelTagsPaths(modal));
 
     modal && console.log(stats);
 
@@ -292,7 +292,7 @@ export const filteredLabelTagCounts = selectorFamily<
     const stats = get(
       modal ? extendedModalStats : selectors.extendedDatasetStats
     );
-    const paths = get(selectors.labelTagsPaths);
+    const paths = get(selectors.labelTagsPaths(modal));
 
     const result = {};
 
@@ -387,10 +387,10 @@ export const labelCounts = selectorFamily<
 >({
   key: "labelCounts",
   get: ({ key, modal }) => ({ get }) => {
-    const names = get(selectors.labelNames(key));
+    const names = get(selectors.labelNames({ modal, dimension: key }));
     const prefix = key === "sample" ? "" : "frames.";
     const stats = get(modal ? modalStats : selectors.datasetStats);
-    const labelTypesMap = get(selectors.labelTypesMap);
+    const labelTypesMap = get(selectors.labelTypesMap(modal));
     if (stats === null) {
       return null;
     }
@@ -408,12 +408,12 @@ export const filteredLabelCounts = selectorFamily<
 >({
   key: "filteredLabelCounts",
   get: ({ key, modal }) => ({ get }) => {
-    const names = get(selectors.labelNames(key));
+    const names = get(selectors.labelNames({ modal, dimension: key }));
     const prefix = key === "sample" ? "" : "frames.";
     const stats = get(
       modal ? extendedModalStats : selectors.extendedDatasetStats
     );
-    const labelTypesMap = get(selectors.labelTypesMap);
+    const labelTypesMap = get(selectors.labelTypesMap(modal));
 
     if (stats === null) {
       return null;
@@ -435,7 +435,7 @@ export const scalarCounts = selectorFamily<
       return get(atoms.modal).sample;
     }
 
-    const names = get(selectors.primitiveNames("sample"));
+    const names = get(selectors.primitiveNames({ modal, dimension: "sample" }));
     const stats = get(selectors.datasetStats);
     if (stats === null) {
       return null;
@@ -457,7 +457,7 @@ export const filteredScalarCounts = selectorFamily<
       return null;
     }
 
-    const names = get(selectors.primitiveNames("sample"));
+    const names = get(selectors.primitiveNames({ modal, dimension: "sample" }));
     const stats = get(selectors.extendedDatasetStats);
     if (stats === null) {
       return null;
@@ -480,7 +480,9 @@ export const countsAtom = selectorFamily<
       filtered ? noneFilteredFieldCounts(modal) : noneFieldCounts(modal)
     )[path];
 
-    const primitive = get(selectors.primitiveNames("sample"));
+    const primitive = get(
+      selectors.primitiveNames({ modal, dimension: "sample" })
+    );
 
     if (modal && primitive.includes(path)) {
       const result = get(atoms.modal).sample[path];
@@ -612,8 +614,7 @@ export const tagNames = selectorFamily<string[], boolean>({
 export const labelTagNames = selectorFamily<string[], boolean>({
   key: "labelTagNames",
   get: (modal) => ({ get }) => {
-    const paths = get(selectors.labelTagsPaths);
-    console.log(paths);
+    const paths = get(selectors.labelTagsPaths(modal));
     const result = new Set<string>();
     (get(modal ? modalStats : selectors.datasetStats) ?? []).forEach((s) => {
       if (paths.includes(s.name)) {
