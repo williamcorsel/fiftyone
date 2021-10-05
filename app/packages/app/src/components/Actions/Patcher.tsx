@@ -30,8 +30,8 @@ export const patching = atom<boolean>({
 export const patchesFields = selector<string[]>({
   key: "patchesFields",
   get: ({ get }) => {
-    const paths = get(selectors.labelPaths);
-    const types = get(selectors.labelTypesMap);
+    const paths = get(selectors.labelPaths(false));
+    const types = get(selectors.labelTypesMap(false));
     return paths.filter((p) => PATCHES_FIELDS.includes(types[p]));
   },
 });
@@ -39,9 +39,11 @@ export const patchesFields = selector<string[]>({
 export const clipsFields = selector<string[]>({
   key: "clipsFields",
   get: ({ get }) => {
-    const paths = get(selectors.labelPaths);
-    const types = get(selectors.labelTypesMap);
-    const pschema = get(selectors.primitivesSchema("sample"));
+    const paths = get(selectors.labelPaths(false));
+    const types = get(selectors.labelTypesMap(false));
+    const pschema = get(
+      selectors.primitivesSchema({ modal: false, dimension: "sample" })
+    );
 
     return [
       ...paths.filter((p) =>

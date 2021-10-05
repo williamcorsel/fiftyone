@@ -548,20 +548,26 @@ type OthersCellProps = {
 };
 
 const OthersCell = ({ modal }: OthersCellProps) => {
-  const scalars = useRecoilValue(selectors.primitiveNames("sample"));
+  const scalars = useRecoilValue(
+    selectors.primitiveNames({ modal, dimension: "sample" })
+  );
   const [activeScalars, setActiveScalars] = useRecoilState(
     fieldAtoms.activeScalars(modal)
   );
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
-  const dbFields = useRecoilValue(selectors.primitivesDbMap("sample"));
+  const dbFields = useRecoilValue(
+    selectors.primitivesDbMap({ modal, dimension: "sample" })
+  );
 
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, count] = [
     filterAtoms.filteredScalarCounts(modal),
     useRecoilValue(filterAtoms.scalarCounts(modal)),
   ];
-  const types = useRecoilValue(selectors.primitivesMap("sample"));
+  const types = useRecoilValue(
+    selectors.primitivesMap({ modal, dimension: "sample" })
+  );
 
   return (
     <Cell
@@ -639,7 +645,7 @@ type UnsupportedCellProps = {
 };
 
 const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
-  const unsupported = useRecoilValue(fieldAtoms.unsupportedFields);
+  const unsupported = useRecoilValue(fieldAtoms.unsupportedFields(modal));
   return unsupported.length ? (
     <Cell
       label={"Unsupported fields"}
