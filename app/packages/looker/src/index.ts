@@ -332,7 +332,9 @@ export abstract class Looker<State extends BaseState = BaseState> {
   }
 
   getSample(): Promise<Sample> {
-    let sample = { ...this.sample };
+    let sample = this.state.options.showSource
+      ? { ...this.sourceSample }
+      : { ...this.sample };
 
     return Promise.resolve(
       filterSample(this.state, sample, this.state.options.fieldsMap)

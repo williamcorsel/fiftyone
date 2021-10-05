@@ -262,8 +262,6 @@ export const labelTagCounts = selectorFamily<
     const stats = get(modal ? modalStats : selectors.datasetStats);
     const paths = get(selectors.labelTagsPaths(modal));
 
-    modal && console.log(stats);
-
     const result = {};
 
     stats &&

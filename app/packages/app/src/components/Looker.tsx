@@ -335,8 +335,12 @@ const lookerOptions = selector({
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
-      fieldsMap: reverse(get(selectors.primitivesDbMap("sample"))),
-      frameFieldsMap: reverse(get(selectors.primitivesDbMap("frame"))),
+      fieldsMap: reverse(
+        get(selectors.primitivesDbMap({ modal: true, dimension: "sample" }))
+      ),
+      frameFieldsMap: reverse(
+        get(selectors.primitivesDbMap({ modal: true, dimension: "frame" }))
+      ),
     };
   },
 });
@@ -395,7 +399,9 @@ const Looker = ({
   const fullscreen = useRecoilValue(atoms.fullscreen);
   const isClips = useRecoilValue(selectors.isClipsView);
   const mimetype = getMimeType(sample);
-  const schema = useRecoilValue(selectors.fieldSchema("sample"));
+  const schema = useRecoilValue(
+    selectors.fieldSchema({ modal: true, dimension: "sample" })
+  );
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
   const options = useRecoilValue(lookerOptions);
   const activePaths = useRecoilValue(labelAtoms.activeModalFields);

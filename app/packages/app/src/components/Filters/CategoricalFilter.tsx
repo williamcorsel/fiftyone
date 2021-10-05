@@ -154,8 +154,9 @@ const Wrapper = ({
   ]);
   const disableCount =
     modal &&
-    useRecoilValue(selectors.primitivesSubfieldMap("sample"))[path] ===
-      FRAME_SUPPORT_FIELD;
+    useRecoilValue(
+      selectors.primitivesSubfieldMap({ modal, dimension: "sample" })
+    )[path] === FRAME_SUPPORT_FIELD;
 
   if (totalCount <= CHECKBOX_LIMIT || disableItems) {
     allValues = [
@@ -348,6 +349,7 @@ const useSearch = () => {
       const id = uuid();
 
       const clear = setTimeout(() => setSearchResults(null), 200);
+      const source = modal && useRecoilValue(atoms.modalSourceSample);
       const wrap = (handler) => ({ data }) => {
         data = JSON.parse(data);
         data.uuid === id && handler(data);
@@ -376,6 +378,7 @@ const useSearch = () => {
             limit: LIST_LIMIT,
             uuid: id,
             sample_id: sampleId,
+            source,
             ...sorting,
           })
         );

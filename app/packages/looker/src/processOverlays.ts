@@ -25,7 +25,9 @@ const processOverlays = <State extends BaseState>(
 
     if (!(overlay.field && overlay.field in bins)) continue;
 
-    if (!overlay.isShown(state)) continue;
+    if (!overlay.isShown(state)) {
+      continue;
+    }
 
     bins[overlay.field].push(overlay);
   }

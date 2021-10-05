@@ -40,7 +40,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     );
     for (const field of labels) {
       if (primitives.includes(field)) {
-        if (get(numericField.isNumericField(field))) {
+        if (get(numericField.isNumericField({ modal, field }))) {
           const [range, none] = [
             get(numericField.rangeAtom({ modal, path: field })),
             get(numericField.noneAtom({ modal, path: field })),

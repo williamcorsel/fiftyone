@@ -46,6 +46,7 @@ export const useClearModal = () => {
       set(atoms.modal, null);
       set(selectors.selectedLabels, {});
       set(atoms.hiddenLabels, {});
+      set(atoms.modalSourceSample, false);
     },
     []
   );

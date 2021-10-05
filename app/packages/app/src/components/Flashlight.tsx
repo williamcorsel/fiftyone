@@ -96,8 +96,12 @@ const flashlightLookerOptions = selector({
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
       inSelectionMode: get(atoms.selectedSamples).size > 0,
-      fieldsMap: get(selectors.primitivesDbMap("sample")),
-      frameFieldsMap: get(selectors.primitivesDbMap("frame")),
+      fieldsMap: get(
+        selectors.primitivesDbMap({ modal: false, dimension: "sample" })
+      ),
+      frameFieldsMap: get(
+        selectors.primitivesDbMap({ modal: false, dimension: "frame" })
+      ),
     };
   },
 });
@@ -275,7 +279,9 @@ export default React.memo(() => {
   const lookerOptions = useRecoilValue(flashlightLookerOptions);
   const getLookerType = useRecoilValue(lookerType);
   const lookerGeneratorRef = useRef<any>();
-  const schema = useRecoilValue(selectors.fieldSchema("sample"));
+  const schema = useRecoilValue(
+    selectors.fieldSchema({ modal: false, dimension: "sample" })
+  );
   const isClips = useRecoilValue(selectors.isClipsView);
   lookerGeneratorRef.current = ({
     sample,
