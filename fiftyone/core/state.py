@@ -77,9 +77,11 @@ class StateDescription(etas.Serializable):
             _dataset = None
             _view = None
             _view_cls = None
+            _root_dataset = None
 
             if self.dataset is not None:
                 _dataset = self.dataset._serialize()
+                _root_dataset = self.dataset._root_dataset._serialize()
 
                 if self.view is not None:
                     _view = self.view._serialize()
@@ -96,6 +98,7 @@ class StateDescription(etas.Serializable):
             d["dataset"] = _dataset
             d["view"] = _view
             d["view_cls"] = _view_cls
+            d["root_dataset"] = _root_dataset
 
             return d
 

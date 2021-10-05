@@ -242,13 +242,14 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
     filterAtoms.filteredSampleTagCounts(modal),
     useRecoilValue(filterAtoms.sampleTagCounts(modal)),
   ];
+  const useSource = useRecoilValue(atoms.modalSourceSample) && modal;
 
   const { singular: element } = useRecoilValue(selectors.elementNames);
   const theme = useTheme();
 
   return (
     <Cell
-      label={`${element} tags`}
+      label={`${useSource ? "Sample" : element} tags`}
       icon={<Note />}
       pills={
         !modal && makeClearMatchTags(theme.font, matchedTags, setMatchedTags)

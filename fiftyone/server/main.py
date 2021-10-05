@@ -739,7 +739,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = get_extended_view(view, state.filters)
         if state.selected:
-            view = view.select(state.selected)
+            view = fov.make_optimized_select_view(view, state.selected)
 
         if target_labels:
             fosu.change_label_tags(view, changes, label_fields=active_labels)
@@ -779,20 +779,20 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @staticmethod
-    async def on_modal_statistics(caller, sample_id, uuid, filters=None):
+    async def on_modal_statistics(
+        caller, sample_id, uuid, filters=None, source=False
+    ):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
+        view = state.dataset
+        if state.view is not None and not source:
             view = state.view
-        else:
-            view = state.dataset
 
         if filters is not None:
             view = get_extended_view(
                 view, filters, count_labels_tags=False, only_matches=False
             )
 
-        view = view.select(sample_id)
-
+        view = fov.make_optimized_select_view(view, sample_id)
         aggregations = fos.DatasetStatistics(view, filters).aggregations
 
         results = await view._async_aggregate(aggregations)
@@ -823,7 +823,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         if with_selected:
             if state.selected:
-                view = view.select(state.selected)
+                view = fov.make_optimized_select_view(view, state.selected)
             elif state.selected_labels:
                 view = view.select_labels(state.selected_labels)
 
@@ -863,13 +863,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 sample_ids = list({label["sample_id"] for label in labels})
                 tag_view = view.select_labels(labels=labels)
             else:
-                tag_view = view.select(sample_id)
+                tag_view = fov.make_optimized_select_view(view, sample_id)
 
             fosu.change_label_tags(
                 tag_view, changes, label_fields=active_labels
             )
         else:
-            tag_view = view.select(sample_id)
+            tag_view = fov.make_optimized_select_view(view, sample_id)
             fosu.change_sample_tags(tag_view, changes)
 
         for clients in PollingHandler.clients.values():
@@ -909,9 +909,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if state.selected_labels and labels:
             view = view.select_labels(state.selected_labels)
         elif sample_id:
-            view = view.select(sample_id)
+            view = fov.make_optimized_select_view(view, sample_id)
         elif state.selected:
-            view = view.select(state.selected)
+            view = fov.make_optimized_select_view(view, state.selected)
 
         if labels:
             view = view.select_fields(active_labels)
@@ -1088,7 +1088,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = _get_search_view(view, path, search, selected)
 
         if sample_id is not None:
-            view = view.select(sample_id)
+            view = fov.make_optimized_select_view(view, sample_id)
 
         sort_by = "count" if count else "_id"
 

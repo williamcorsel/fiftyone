@@ -3,6 +3,7 @@ import { atom, atomFamily } from "recoil";
 
 interface AppSample extends Sample {
   _id: string;
+  _sample_id?: string;
 }
 
 export interface SampleData {

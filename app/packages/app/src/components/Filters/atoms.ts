@@ -6,7 +6,6 @@ import * as selectors from "../../recoil/selectors";
 import { AGGS, LABEL_LIST, LABEL_LISTS } from "../../utils/labels";
 import { request } from "../../utils/socket";
 import { viewsAreEqual } from "../../utils/view";
-import { Value } from "./types";
 import { activeLabels } from "./utils";
 
 export { filterStages } from "../../recoil/selectors";
@@ -83,11 +82,15 @@ const modalStatsRaw = selector({
   key: "modalStatsRaw",
   get: async ({ get }) => {
     const id = uuid();
+    const source = get(atoms.modalSourceSample);
+    const sample = get(atoms.modal).sample;
+
     const data = await request({
       type: "modal_statistics",
       uuid: id,
       args: {
-        sample_id: get(atoms.modal).sample._id,
+        sample_id: source ? sample._sample_id : sample._id,
+        source,
       },
     });
 
@@ -104,12 +107,16 @@ const extendedModalStatsRaw = selector({
   key: "modalExtendedStatsRaw",
   get: async ({ get }) => {
     const id = uuid();
+    const source = get(atoms.modalSourceSample);
+    const sample = get(atoms.modal).sample;
+
     const data = await request({
       type: "modal_statistics",
       uuid: id,
       args: {
-        sample_id: get(atoms.modal).sample._id,
+        sample_id: source ? sample._sample_id : sample._id,
         filters: get(modalFilterStages),
+        source,
       },
     });
 
@@ -254,6 +261,8 @@ export const labelTagCounts = selectorFamily<
   get: (modal) => ({ get }) => {
     const stats = get(modal ? modalStats : selectors.datasetStats);
     const paths = get(selectors.labelTagsPaths);
+
+    modal && console.log(stats);
 
     const result = {};
 
@@ -462,7 +471,7 @@ export const filteredScalarCounts = selectorFamily<
 });
 
 export const countsAtom = selectorFamily<
-  { count: number; results: [Value, number][] },
+  { count: number; results: [any, number][] },
   { path: string; modal: boolean; filtered: boolean }
 >({
   key: "categoricalFieldCounts",
@@ -537,7 +546,7 @@ export const countsAtom = selectorFamily<
 
 export const subCountValueAtom = selectorFamily<
   number | null,
-  { path: string; modal: boolean; value: Value }
+  { path: string; modal: boolean; value: any }
 >({
   key: "categoricalFieldSubCountsValues",
   get: ({ path, modal, value }) => ({ get }) => {
@@ -604,6 +613,7 @@ export const labelTagNames = selectorFamily<string[], boolean>({
   key: "labelTagNames",
   get: (modal) => ({ get }) => {
     const paths = get(selectors.labelTagsPaths);
+    console.log(paths);
     const result = new Set<string>();
     (get(modal ? modalStats : selectors.datasetStats) ?? []).forEach((s) => {
       if (paths.includes(s.name)) {

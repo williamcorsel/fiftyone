@@ -17,9 +17,9 @@ const Container = styled.div`
   position: relative;
   display: grid;
   grid-template-columns: auto 296px;
-  width: 90vw;
-  height: 80vh;
-  max-height: 80vh;
+  width: 95vw;
+  height: 90vh;
+  max-height: 90vh;
   background-color: ${({ theme }) => theme.backgroundDark};
 
   h2 {
@@ -215,7 +215,7 @@ export const useSampleUpdate = (lookerRef) => {
 
 const SampleModal = ({ onClose }: Props, ref) => {
   const {
-    sample: { filepath, _id, _media_type, metadata },
+    sample: { filepath, _id, _media_type, metadata, _sample_id },
     index,
     getIndex,
   } = useRecoilValue(atoms.modal);
@@ -225,6 +225,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const onSelectLabel = useOnSelectLabel();
   let count = useRecoilValue(selectors.filteredCount);
   const total = useRecoilValue(selectors.totalCount);
+  const source = useRecoilValue(atoms.modalSourceSample);
   if (count === null) {
     count = total;
   }
@@ -260,7 +261,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
             Metadata
             <span className="push-right" />
           </h2>
-          <Row name="id" value={_id} />
+          <Row name="id" value={source ? _sample_id : _id} />
           <Row name="filepath" value={filepath} />
           <Row name="media type" value={_media_type} />
           {formatMetadata(metadata).map(({ name, value }) => (

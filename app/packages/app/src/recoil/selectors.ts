@@ -347,11 +347,19 @@ export const labelTagsPaths = selector({
   },
 });
 
-export const fieldSchema = selectorFamily({
+export const fieldSchema = selectorFamily<
+  object,
+  { modal: boolean; dimension: string }
+>({
   key: "fieldSchema",
-  get: (dimension: string) => ({ get }) => {
-    const d = get(atoms.stateDescription).dataset || {};
-    return d[dimension + "_fields"] || [];
+  get: (params) => ({ get }) => {
+    const state = get(atoms.stateDescription);
+    const d =
+      params.modal && get(atoms.modalSourceSample)
+        ? state.root_dataset
+        : state.dataset;
+
+    return d[params.dimension + "_fields"] || [];
   },
 });
 
@@ -386,21 +394,27 @@ const primitiveFilter = (f) => {
   return false;
 };
 
-const fields = selectorFamily<{ [key: string]: SerializableParam }, string>({
+const fields = selectorFamily<
+  { [key: string]: SerializableParam },
+  { modal: boolean; dimension: string }
+>({
   key: "fields",
-  get: (dimension: string) => ({ get }) => {
-    return get(fieldSchema(dimension)).reduce((acc, cur) => {
+  get: (params) => ({ get }) => {
+    return get(fieldSchema(params)).reduce((acc, cur) => {
       acc[cur.name] = cur;
       return acc;
     }, {});
   },
 });
 
-const selectedFields = selectorFamily({
+const selectedFields = selectorFamily<
+  any,
+  { modal: boolean; dimension: string }
+>({
   key: "selectedFields",
-  get: (dimension: string) => ({ get }) => {
+  get: (params) => ({ get }) => {
     const view_ = get(view);
-    const fields_ = { ...get(fields(dimension)) };
+    const fields_ = { ...get(fields(params)) };
     const video = get(isVideoDataset);
     const source = get(atoms.modalSourceSample);
 
@@ -409,7 +423,7 @@ const selectedFields = selectorFamily({
         if (_cls === "fiftyone.core.stages.SelectFields") {
           const supplied = kwargs[0][1] ? kwargs[0][1] : [];
           let names = new Set([...supplied, ...RESERVED_FIELDS]);
-          if (video && dimension === "frame") {
+          if (video && params.dimension === "frame") {
             names = new Set(
               Array.from(names).map((n) => n.slice("frames.".length))
             );
@@ -423,7 +437,7 @@ const selectedFields = selectorFamily({
           const supplied = kwargs[0][1] ? kwargs[0][1] : [];
           let names = Array.from(supplied);
 
-          if (video && dimension === "frame") {
+          if (video && params.dimension === "frame") {
             names = names.map((n) => n.slice("frames.".length));
           } else if (video) {
             names = names.filter((n) => n.startsWith("frames."));
@@ -444,17 +458,17 @@ export const defaultGridZoom = selector<number | null>({
   },
 });
 
-export const fieldPaths = selector({
+export const fieldPaths = selectorFamily<string[], boolean>({
   key: "fieldPaths",
-  get: ({ get }) => {
+  get: (modal) => ({ get }) => {
     const excludePrivateFilter = (f) => !f.startsWith("_");
-    const fieldsNames = Object.keys(get(selectedFields("sample"))).filter(
-      excludePrivateFilter
-    );
+    const fieldsNames = Object.keys(
+      get(selectedFields({ modal, dimension: "sample" }))
+    ).filter(excludePrivateFilter);
     if (get(mediaType) === "video") {
       return fieldsNames
         .concat(
-          Object.keys(get(selectedFields("frame")))
+          Object.keys(get(selectedFields({ modal, dimension: "frame" })))
             .filter(excludePrivateFilter)
             .map((f) => "frames." + f)
         )
@@ -466,91 +480,111 @@ export const fieldPaths = selector({
 
 const labels = selectorFamily<
   { name: string; embedded_doc_type: string }[],
-  string
+  { dimension: string; modal: boolean }
 >({
   key: "labels",
-  get: (dimension: string) => ({ get }) => {
-    const fieldsValue = get(selectedFields(dimension));
+  get: (params) => ({ get }) => {
+    const fieldsValue = get(selectedFields(params));
     const video = get(isVideoDataset) && get(isRootView);
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
-      .filter(getLabelFilter(video, dimension))
+      .filter(getLabelFilter(video, params.dimension))
       .sort((a, b) => (a.name < b.name ? -1 : 1));
   },
 });
 
-export const labelNames = selectorFamily<string[], string>({
+export const labelNames = selectorFamily<
+  string[],
+  { dimension: string; modal: boolean }
+>({
   key: "labelNames",
-  get: (dimension: string) => ({ get }) => {
-    const l = get(labels(dimension));
+  get: (params) => ({ get }) => {
+    const l = get(labels(params));
     return l.map((l) => l.name);
   },
 });
 
-export const labelPaths = selector<string[]>({
+export const labelPaths = selectorFamily<string[], boolean>({
   key: "labelPaths",
-  get: ({ get }) => {
-    const sampleLabels = get(labelNames("sample"));
-    const frameLabels = get(labelNames("frame"));
+  get: (modal) => ({ get }) => {
+    const sampleLabels = get(labelNames({ modal, dimension: "sample" }));
+    const frameLabels = get(labelNames({ modal, dimension: "frame" }));
     return sampleLabels.concat(frameLabels.map((l) => "frames." + l));
   },
 });
 
-export const labelTypesMap = selector<{ [key: string]: string }>({
-  key: "labelTypesMap",
-  get: ({ get }) => {
-    const sampleLabels = get(labelNames("sample"));
-    const sampleLabelTypes = get(labelTypes("sample"));
-    const frameLabels = get(labelNames("frame"));
-    const frameLabelTypes = get(labelTypes("frame"));
-    const sampleTuples = sampleLabels.map((l, i) => [l, sampleLabelTypes[i]]);
-    const frameTuples = frameLabels.map((l, i) => [
-      `frames.${l}`,
-      frameLabelTypes[i],
-    ]);
-    return Object.fromEntries(sampleTuples.concat(frameTuples));
-  },
-});
+export const labelTypesMap = selectorFamily<{ [key: string]: string }, boolean>(
+  {
+    key: "labelTypesMap",
+    get: (modal) => ({ get }) => {
+      const sampleLabels = get(labelNames({ modal, dimension: "sample" }));
+      const sampleLabelTypes = get(labelTypes({ modal, dimension: "sample" }));
+      const frameLabels = get(labelNames({ modal, dimension: "frame" }));
+      const frameLabelTypes = get(labelTypes({ modal, dimension: "frame" }));
+      const sampleTuples = sampleLabels.map((l, i) => [l, sampleLabelTypes[i]]);
+      const frameTuples = frameLabels.map((l, i) => [
+        `frames.${l}`,
+        frameLabelTypes[i],
+      ]);
+      return Object.fromEntries(sampleTuples.concat(frameTuples));
+    },
+  }
+);
 
-export const labelTypes = selectorFamily<string[], string>({
+export const labelTypes = selectorFamily<
+  string[],
+  { modal: boolean; dimension: string }
+>({
   key: "labelTypes",
-  get: (dimension) => ({ get }) => {
-    return get(labels(dimension)).map((l) => {
+  get: (params) => ({ get }) => {
+    return get(labels(params)).map((l) => {
       return l.embedded_doc_type.split(".").slice(-1)[0];
     });
   },
 });
 
-const primitives = selectorFamily({
+const primitives = selectorFamily<
+  object[],
+  { modal: boolean; dimension: string }
+>({
   key: "primitives",
-  get: (dimension: string) => ({ get }) => {
-    const fieldsValue = get(selectedFields(dimension));
+  get: (params) => ({ get }) => {
+    const fieldsValue = get(selectedFields(params));
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
       .filter(primitiveFilter);
   },
 });
 
-export const primitiveNames = selectorFamily({
+export const primitiveNames = selectorFamily<
+  string[],
+  { modal: boolean; dimension: string }
+>({
   key: "primitiveNames",
-  get: (dimension: string) => ({ get }) => {
-    const l = get(primitives(dimension));
+  get: (params) => ({ get }) => {
+    const l = get(primitives(params));
     return l.map((l) => l.name);
   },
 });
 
-export const primitiveTypes = selectorFamily({
+export const primitiveTypes = selectorFamily<
+  string[],
+  { modal: boolean; dimension: string }
+>({
   key: "primitiveTypes",
-  get: (dimension: string) => ({ get }) => {
-    const l = get(primitives(dimension));
+  get: (params) => ({ get }) => {
+    const l = get(primitives(params));
     return l.map((l) => l.ftype);
   },
 });
 
-export const primitiveSubfields = selectorFamily({
+export const primitiveSubfields = selectorFamily<
+  string[],
+  { modal: boolean; dimension: string }
+>({
   key: "primitiveSubfields",
-  get: (dimension: string) => ({ get }) => {
-    const l = get(primitives(dimension));
+  get: (params) => ({ get }) => {
+    const l = get(primitives(params));
     return l.map((l) => l.subfield);
   },
 });
@@ -585,11 +619,14 @@ export const labelMap = selectorFamily({
   },
 });
 
-export const primitivesMap = selectorFamily<{ [key: string]: string }, string>({
+export const primitivesMap = selectorFamily<
+  { [key: string]: string },
+  { modal: boolean; dimension: string }
+>({
   key: "primitivesMap",
-  get: (dimension) => ({ get }) => {
-    const types = get(primitiveTypes(dimension));
-    return get(primitiveNames(dimension)).reduce(
+  get: (params) => ({ get }) => {
+    const types = get(primitiveTypes(params));
+    return get(primitiveNames(params)).reduce(
       (acc, cur, i) => ({
         ...acc,
         [cur]: types[i],
@@ -601,12 +638,12 @@ export const primitivesMap = selectorFamily<{ [key: string]: string }, string>({
 
 export const primitivesSubfieldMap = selectorFamily<
   { [key: string]: string },
-  string
+  { modal: boolean; dimension: string }
 >({
   key: "primitivesSubfieldMap",
-  get: (dimension) => ({ get }) => {
-    const subfields = get(primitiveSubfields(dimension));
-    return get(primitiveNames(dimension)).reduce(
+  get: (params) => ({ get }) => {
+    const subfields = get(primitiveSubfields(params));
+    return get(primitiveNames(params)).reduce(
       (acc, cur, i) => ({
         ...acc,
         [cur]: subfields[i],
@@ -618,12 +655,12 @@ export const primitivesSubfieldMap = selectorFamily<
 
 export const primitivesDbMap = selectorFamily<
   { [key: string]: string },
-  string
+  { modal: boolean; dimension: string }
 >({
   key: "primitivesDbMap",
-  get: (dimension) => ({ get }) => {
-    const values = get(primitives(dimension));
-    return get(primitiveNames(dimension)).reduce(
+  get: (params) => ({ get }) => {
+    const values = get(primitives(params));
+    return get(primitiveNames(params)).reduce(
       (acc, cur, i) => ({
         ...acc,
         [cur]: values[i].db_field,
@@ -652,13 +689,16 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
   },
 });
 
-export const labelNameGroups = selectorFamily({
+export const labelNameGroups = selectorFamily<
+  any,
+  { dimension: string; modal: boolean }
+>({
   key: "labelNameGroups",
-  get: (dimension: string) => ({ get }) =>
+  get: (params) => ({ get }) =>
     makeLabelNameGroups(
-      get(selectedFields(dimension)),
-      get(labelNames(dimension)),
-      get(labelTypes(dimension))
+      get(selectedFields(params)),
+      get(labelNames(params)),
+      get(labelTypes(params))
     ),
 });
 
