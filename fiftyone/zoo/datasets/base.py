@@ -13,11 +13,13 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.types as fot
+from fiftyone.types.dataset_types import DOTADetectionDataset
 import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
 import fiftyone.utils.cityscapes as foucs
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.data as foud
+import fiftyone.utils.dota as foudo
 import fiftyone.utils.fiw as fouf
 import fiftyone.utils.hmdb51 as fouh
 import fiftyone.utils.kinetics as fouk
@@ -1157,6 +1159,40 @@ class COCO2017Dataset(FiftyOneDataset):
         root_dir = os.path.dirname(os.path.normpath(dataset_dir))
         return os.path.join(root_dir, "raw")
 
+
+class DOTADataset(FiftyOneDataset):
+    """
+    The Dota 2 dataset
+
+    The Dota 2 dataset is a collection of Dota 2 images and annotations. The
+    dataset is split into two splits: ``train`` and ``validation``.
+
+    The Dota 2 dataset is available from the `Dota 2 website
+    """
+
+    @property
+    def name(self):
+        return "dota"
+        
+    @property
+    def tags(self):
+        return (
+            "image",
+            "satellite",
+        )
+
+    @property
+    def supported_splits(self):
+        return "train", "val", "test"
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        num_samples, classes = foudo.download_dota_dataset(
+            dataset_dir, split
+        )
+
+        dataset_type = fot.DOTADetectionDataset()
+
+        return dataset_type, num_samples, classes
 
 class FIWDataset(FiftyOneDataset):
     """Families in the Wild is a public benchmark for recognizing families via
@@ -2667,6 +2703,7 @@ AVAILABLE_DATASETS = {
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
+    "dota": DOTADataset,
     "fiw": FIWDataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,

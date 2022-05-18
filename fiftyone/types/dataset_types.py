@@ -401,6 +401,27 @@ class COCODetectionDataset(ImageDetectionDataset):
         return fouc.COCODetectionDatasetExporter
 
 
+class DOTADetectionDataset(ImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated object
+    detections saved in
+    `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
+
+    See :ref:`this page <COCODetectionDataset-import>` for importing datasets
+    of this type, and see :ref:`this page <COCODetectionDataset-export>` for
+    exporting datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.dota as foud
+
+        return foud.DOTADetectionDatasetImporter
+
+    # def get_dataset_exporter_cls(self):
+    #     import fiftyone.utils.dota as fouc
+
+    #     return fouc.DOTADetectionDatasetExporter
+
+
 class VOCDetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
